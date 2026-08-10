@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "updated": "2026-08-10",
+  "note": "門店登錄範本。真正在用的是 stores.json（不進 git）。換一台機器就把這個檔複製成 stores.json，再填上該店卡的資料。",
+  "event_types": {
+    "idle": "畫布 —— 紅→黃像素漸變背景，無縫循環，沒事就播這個",
+    "patrol": "整點巡迴 —— 小勇者帶劍走過畫面，整點觸發＋待機時隨機出現",
+    "okawari": "促銷活動（續碗）—— 客人續碗時觸發，勇者衝出來劈石。需要低延遲切換",
+    "hourly": "整點事件 —— 已併入 patrol",
+    "promo": "促銷單張圖 —— 保留代號，目前未使用"
+  },
+  "content_source": {
+    "demo": "okawari-signage-demo/index.html（網頁版 v0.4）",
+    "panel": "led-panel/okawari_panel.py（64×32 實體板移植版）",
+    "note": "三樣內容的動態邏輯都以這兩支 demo 為準。續碗含擲骰破石，機率 stoneChance 預設 0.25。"
+  },
+  "params_help": {
+    "_": "這些是『要用眼睛看了才知道對不對』的值，改完按「發佈到卡」就會生效。每店也可以自己加一個 params 覆寫這裡。",
+    "seconds": "這段播完要幾秒。",
+    "fps": "每秒幾格。25 就是模擬器的流暢度；畫布只是慢慢變色，2 就夠。越高檔案越大。",
+    "patrol_gap": "勇者落後壞人幾個身位。太大兩個會不同時在畫面上。",
+    "gradient_window": "漸變一次用掉多少色階（0〜1）。越小顏色跨度越窄、越沉穩。",
+    "dither": "顆粒強度。0 = 完全乾淨的漸層，但 LED 上比較容易出現色帶。",
+    "hero_scale": "角色佔畫面高度的比例。"
+  },
+  "params": {
+    "idle_seconds": 30,
+    "idle_fps": 2,
+    "idle_scroll": 0,
+    "patrol_every_minutes": 0,
+    "patrol_seconds": 12,
+    "patrol_fps": 25,
+    "okawari_seconds": 8,
+    "okawari_fps": 25,
+    "okawari_hit_chance": 0.25,
+    "patrol_gap": 30,
+    "okawari_stone": 0.55,
+    "gradient_window": 0.72,
+    "dither": 0.22,
+    "hero_scale": 0.72
+  },
+  "stores": [
+    {
+      "id": "test",
+      "name": "測試版（公司測試卡）",
+      "enabled": true,
+      "note": "2026-08-10 實測建立。所有送檔／建節目的功能都先在這裡驗證完再推到門市。",
+      "canvas": {
+        "width": 160,
+        "height": 40,
+        "pitch": null,
+        "source": "2026-08-10 由卡的 GetDeviceInfo 讀回，次元光電確認"
+      },
+      "mirror": {
+        "of": "tainan",
+        "align": "center",
+        "note": "測試卡不是獨立設計。它是台南 960×120 等比縮 1/3（高 120→40）之後的一個視窗；縮完寬度是 320，卡只有 160，所以取中間那段。這樣測試卡上看到的就是門市的真實比例。"
+      },
+      "card": {
+        "model": "C16L",
+        "hardware": "HD-C16L-V1.X",
+        "cpu": "RK.px30",
+        "device_id": "",
+        "mac": "",
+        "firmware_app": "7.9.79.0",
+        "firmware_fpga": "16.8.0.0",
+        "sdk_port": 10001,
+        "ip_mode": "dhcp",
+        "last_known_ip": "",
+        "gateway": null,
+        "wifi_ap": {
+          "enabled": true,
+          "ssid": "",
+          "password": "",
+          "ip": "192.168.6.1",
+          "note": "出廠預設密碼一定要改掉，不要留 88888888"
+        }
+      },
+      "hq": {
+        "host": "",
+        "port": 0,
+        "note": "SetSDKTcpServer 主動回連，目前是空的。"
+      },
+      "network": {
+        "uplink": "none",
+        "note": "卡的閘道與 DNS 都是 0.0.0.0，沒有對外能力。要接 4G 路由器才能撥回總部。"
+      },
+      "contents": [
+        {
+          "key": "idle",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": true,
+          "seconds": null
+        },
+        {
+          "key": "patrol",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": false,
+          "seconds": null
+        },
+        {
+          "key": "okawari",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": false,
+          "seconds": null
+        }
+      ]
+    },
+    {
+      "id": "tainan",
+      "name": "台南店",
+      "enabled": true,
+      "note": "畫布 2026-08-10 由 Mo 提供。卡資訊待現場讀取。",
+      "canvas": {
+        "width": 960,
+        "height": 120,
+        "pitch": null,
+        "source": "2026-08-10 Mo 提供"
+      },
+      "card": {
+        "sdk_port": 10001,
+        "ip_mode": "dhcp"
+      },
+      "hq": {
+        "host": "",
+        "port": 0
+      },
+      "network": {
+        "uplink": "4g-router"
+      },
+      "contents": [
+        {
+          "key": "idle",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": true,
+          "seconds": null
+        },
+        {
+          "key": "patrol",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": false,
+          "seconds": null
+        },
+        {
+          "key": "okawari",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": false,
+          "seconds": null
+        }
+      ]
+    },
+    {
+      "id": "taichung",
+      "name": "台中店",
+      "enabled": true,
+      "note": "畫布 2026-08-10 由 Mo 提供。卡資訊待現場讀取。",
+      "canvas": {
+        "width": 1040,
+        "height": 120,
+        "pitch": null,
+        "source": "2026-08-10 Mo 提供"
+      },
+      "card": {
+        "sdk_port": 10001,
+        "ip_mode": "dhcp"
+      },
+      "hq": {
+        "host": "",
+        "port": 0
+      },
+      "network": {
+        "uplink": "4g-router"
+      },
+      "contents": [
+        {
+          "key": "idle",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": true,
+          "seconds": null
+        },
+        {
+          "key": "patrol",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": false,
+          "seconds": null
+        },
+        {
+          "key": "okawari",
+          "enabled": true,
+          "variants": [
+            "a"
+          ],
+          "loop": false,
+          "seconds": null
+        }
+      ]
+    }
+  ]
+}

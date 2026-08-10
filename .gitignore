@@ -1,0 +1,30 @@
+# 門店登錄檔有卡的 MAC、device_id、AP 密碼，不要進公開 repo。
+# 進 git 的是 stores.範本.json，實際資料留在各自的機器上。
+後台/stores.json
+後台/stores.json.bak
+後台/stores.json.tmp
+
+# 編出來的影片，每次編都不一樣而且很大
+後台/build/
+
+# 現場測試的原始紀錄，裡面有網路細節
+_明天帶去_LED實測_20260810/03_現場存檔/
+
+# 廠商的 SDK 文件與工具，體積大、也不是我們的東西。
+# 這些留在 Google Drive 就好，GitHub 放的是我們自己寫的程式。
+_明天帶去_LED實測_20260810/02_程式端/SDK協議文件/
+_明天帶去_LED實測_20260810/02_程式端/官方測試工具/
+門頭程式/
+
+# 預覽動畫，單一個檔就好幾 MB
+*.gif
+
+# 這個資料夾裡面有自己的 .git，放進來會變成壞掉的 submodule 參照。
+# 內容跟 OKAWARI 門頭屏模擬器 v1.0.html 是同一套設計，那支有上傳。
+okawari-signage-demo
+
+__pycache__/
+*.pyc
+Thumbs.db
+desktop.ini
+.DS_Store

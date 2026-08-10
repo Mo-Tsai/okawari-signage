@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OKAWARI 門頭屏模擬器 v0.1</title>
+<style>
+  *{box-sizing:border-box}
+  body{background:#0d0b12;color:#d8d3e0;font-family:"Microsoft JhengHei",sans-serif;
+       display:flex;flex-direction:column;align-items:center;padding:24px 14px;margin:0;
+       min-height:100dvh;-webkit-tap-highlight-color:transparent}
+  h1{font-size:15px;letter-spacing:2px;color:#a79fb3;font-weight:600;margin:0 0 4px;text-align:center}
+  h1 b{color:#f7b32b}
+  #meta{font-size:11px;color:#6e6a72;margin-bottom:14px;font-family:"Courier New",monospace;
+        text-align:center;line-height:1.6;padding:0 4px}
+  #frame{background:#16131c;padding:12px;border-radius:10px;border:1px solid #2a2535;
+         box-shadow:0 12px 40px rgba(0,0,0,.6);width:100%;max-width:1200px}
+  canvas{display:block;image-rendering:pixelated;width:100%;height:auto}
+  #ui{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;
+      width:100%;max-width:480px}
+  button,select{background:#1f1a2a;color:#fff;border:1px solid #3a3348;border-radius:8px;
+         padding:14px 16px;font-size:16px;font-family:inherit;cursor:pointer;
+         touch-action:manipulation;flex:1 1 100%}
+  button:active{border-color:#f7b32b;color:#f7b32b;background:#2a2438}
+  @media(hover:hover){button:hover{border-color:#f7b32b;color:#f7b32b}}
+  select{appearance:none;-webkit-appearance:none;text-align:center;text-align-last:center}
+  @media(min-width:640px){
+    button,select{flex:0 1 auto;padding:9px 18px;font-size:14px}
+  }
+  #log{margin-top:12px;font-size:11px;color:#6e6a72;font-family:"Courier New",monospace;
+       min-height:16px;text-align:center;padding:0 4px}
+</style>
+</head>
+<body>
+<h1><b>OKAWARI QUEST</b>｜門頭屏模擬器 v0.1</h1>
+<div id="meta"></div>
+<div id="frame"><canvas id="led"></canvas></div>
+<div id="ui">
+  <button onclick="triggerHero()">▶ 模擬整點（小勇者出場）</button>
+  <button onclick="okawari()">＋ 續碗 OKAWARI</button>
+  <select id="pitch" onchange="updateMeta()">
+    <option value="2.5">P2.5（近看細緻）</option>
+    <option value="3" selected>P3（3m 觀看）</option>
+    <option value="4">P4（4m 觀看）</option>
+    <option value="5">P5（美食街走道距離）</option>
+  </select>
+  <select id="grid" onchange="setGrid(this.value)">
+    <option value="128x32" selected>橫幅 128×32（字標旁長條）</option>
+    <option value="64x64">方屏 64×64（電子雞窗）</option>
+  </select>
+</div>
+<div id="log">idle：紅→黃 像素漸變跑動中；每逢整點小勇者自動出場</div>
+
+<script>
+/* ================= 基本參數 ================= */
+let COLS=128, ROWS=32;
+const CELL=7, GAP=2;              // 螢幕上每顆 LED 的大小與間距
+const cv=document.getElementById('led'), ctx=cv.getContext('2d');
+
+/* 品牌色 */
+const RED=[226,58,46], ORG=[240,120,24], YEL=[247,179,43];
+const lerp=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+const rgb=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+
+/* ================= 小勇者 sprite（12×12，兩幀走路） ================= */
+const SPR_A=[
+"....KKKK....","..KKWWWWKK..",".KWWWWWWWWK.",".KWWWWWWWWK.","KRRRRRRRRRRK",
+".KWWKWWKWWK.",".KWWWWWWWWK.",".KWWWKKWWWK.","..KKWWWWKK..","...KOOOOK...",
+"..KOOOOOOK..","...KK..KK..."];
+const SPR_B=SPR_A.slice(0,11).concat(["..KK....KK.."]);
+const SPC={K:[26,23,33],W:[255,253,246],R:RED,O:ORG};
+
+/* ================= 像素文字（用離屏 canvas 轉點陣） ================= */
+function textGrid(str,px){
+  const oc=document.createElement('canvas'); const o=oc.getContext('2d');
+  o.font=`bold ${px}px "Courier New",monospace`;
+  const w=Math.ceil(o.measureText(str).width), h=px+2;
+  oc.width=w; oc.height=h;
+  o.font=`bold ${px}px "Courier New",monospace`;
+  o.fillStyle='#fff'; o.textBaseline='top'; o.fillText(str,0,0);
+  const d=o.getImageData(0,0,w,h).data, g=[];
+  for(let y=0;y<h;y++){const row=[];for(let x=0;x<w;x++)row.push(d[(y*w+x)*4+3]>110?1:0);g.push(row);}
+  return g;
+}
+
+/* ================= 狀態機 ================= */
+let mode='idle', off=0, frame=0;
+let hero={x:0,t:0}, count=0, countT=0, lastHour=new Date().getHours();
+
+function setGrid(v){[COLS,ROWS]=v.split('x').map(Number); init();}
+function updateMeta(){
+  const p=parseFloat(document.getElementById('pitch').value);
+  document.getElementById('meta').textContent=
+    `${COLS}×${ROWS} px ｜ P${p} 點距 → 實體約 ${(COLS*p/10).toFixed(0)}×${(ROWS*p/10).toFixed(0)} cm ｜ 建議觀看距離 ≥ ${p} m`;
+}
+function init(){
+  cv.width=COLS*(CELL+GAP)-GAP; cv.height=ROWS*(CELL+GAP)-GAP; updateMeta();
+}
+function triggerHero(){ if(mode!=='hero'){mode='hero'; hero={x:-14,t:0};
+  log('EVENT：整點報時——小勇者出場！');} }
+function okawari(){ count++; mode='count'; countT=0; log(`OKAWARI +1 ── 本日 Lv.${count}`); }
+function log(m){ document.getElementById('log').textContent=m; }
+
+/* ================= 畫一顆 LED ================= */
+function dot(x,y,c){
+  ctx.fillStyle=rgb(c);
+  const px=x*(CELL+GAP), py=y*(CELL+GAP);
+  ctx.beginPath(); ctx.arc(px+CELL/2,py+CELL/2,CELL/2,0,7); ctx.fill();
+}
+
+/* ================= 漸變底色（紅→黃 來回循環＋抖動顆粒） ================= */
+function gradientAt(x,y,dim){
+  const PERIOD=COLS*1.6;
+  let pos=((x+off)%PERIOD)/PERIOD;
+  let t=pos<0.5?pos*2:(1-pos)*2;                     // 三角波：紅→黃→紅 無縫循環
+  t+=(((x*7+y*13)%17)/17-0.5)*0.22;                  // ordered dither 顆粒
+  t=Math.max(0,Math.min(1,t));
+  let c=t<0.5?lerp(RED,ORG,t*2):lerp(ORG,YEL,(t-0.5)*2);
+  if(dim) c=c.map(v=>v*0.22);
+  return c;
+}
+
+/* ================= sprite 與文字繪製 ================= */
+function drawSprite(spr,ox,oy,scale){
+  spr.forEach((row,sy)=>{ [...row].forEach((ch,sx)=>{
+    if(ch==='.')return;
+    for(let dy=0;dy<scale;dy++)for(let dx=0;dx<scale;dx++){
+      const x=ox+sx*scale+dx, y=oy+sy*scale+dy;
+      if(x>=0&&x<COLS&&y>=0&&y<ROWS) dot(x,y,SPC[ch]);
+    }});});
+}
+function drawText(g,ox,oy,color){
+  g.forEach((row,y)=>row.forEach((v,x)=>{
+    const X=ox+x,Y=oy+y;
+    if(v&&X>=0&&X<COLS&&Y>=0&&Y<ROWS) dot(X,Y,color);
+  }));
+}
+
+/* ================= 主迴圈 ================= */
+function tick(){
+  frame++;
+  ctx.fillStyle='#0d0b12'; ctx.fillRect(0,0,cv.width,cv.height);
+
+  if(mode==='idle'){
+    off+=0.6;
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++) dot(x,y,gradientAt(x,y,false));
+  }
+
+  if(mode==='hero'){
+    off+=0.25;
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++) dot(x,y,gradientAt(x,y,true)); // 底色壓暗
+    const scale=ROWS>=64?3:2, sh=12*scale;
+    hero.x+=0.9; hero.t++;
+    drawSprite(hero.t%16<8?SPR_A:SPR_B, Math.round(hero.x), ROWS-sh, scale);
+    const g=textGrid('OKAWARI!',10);
+    if(hero.t%30<22) drawText(g, Math.round((COLS-g[0].length)/2), 2, YEL); // 閃爍字幕
+    if(hero.x>COLS+4){ mode='idle'; log('idle：回到待機漸變'); }
+  }
+
+  if(mode==='count'){
+    countT++;
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++) dot(x,y,[22,19,28]); // 熄滅底
+    const g=textGrid('LV.'+count, ROWS>=64?22:16);
+    drawText(g, Math.round((COLS-g[0].length)/2), Math.round(ROWS*0.18), countT%14<9?YEL:[255,255,255]);
+    const cells=10, filled=Math.min(cells,count%cells||cells);
+    for(let i=0;i<cells;i++){
+      const w=3,h=2, x0=Math.round(COLS/2-cells*(w+1)/2)+i*(w+1), y0=Math.round(ROWS*0.72);
+      for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)
+        dot(x0+dx,y0+dy, i<filled?YEL:[60,55,72]);
+    }
+    if(countT>90){ mode='idle'; log('idle：回到待機漸變'); }
+  }
+
+  /* 整點自動觸發 */
+  const h=new Date().getHours();
+  if(h!==lastHour){ lastHour=h; triggerHero(); }
+
+  requestAnimationFrame(tick);
+}
+init(); tick();
+</script>
+</body>
+</html>

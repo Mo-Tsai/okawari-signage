@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OKAWARI 門頭屏模擬器 v1.0</title>
+<style>
+  *{box-sizing:border-box}
+  body{background:#0d0b12;color:#d8d3e0;font-family:"Microsoft JhengHei","PingFang TC",sans-serif;
+       margin:0;padding:20px 16px 60px;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:1360px;margin:0 auto}
+  h1{font-size:15px;letter-spacing:2px;color:#a79fb3;font-weight:600;margin:0 0 3px}
+  h1 b{color:#f7b32b}
+  #meta{font-size:11px;color:#6e6a72;font-family:"Courier New",monospace;margin-bottom:14px;line-height:1.7}
+  #meta em{color:#9a93a6;font-style:normal}
+
+  #stage{background:#16131c;padding:12px;border-radius:10px;border:1px solid #2a2535;
+         box-shadow:0 12px 40px rgba(0,0,0,.6);overflow:auto;
+         max-height:min(46vh,380px);scrollbar-color:#3a3348 #16131c}
+  #stage.drag{border-color:#f7b32b}
+  #screen{position:relative;transition:filter .15s linear;background:#08070c}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+  #grid{position:absolute;inset:0;pointer-events:none;display:none}
+
+  #status{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;
+          font-size:11px;font-family:"Courier New",monospace;color:#6e6a72;min-height:18px}
+  #status .now{color:#f7b32b}
+  #status .sw{color:#e23a2e}
+  #status .q{color:#9a93a6}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:18px}
+  .card{background:#141119;border:1px solid #262133;border-radius:10px;padding:14px}
+  .card h2{font-size:11px;letter-spacing:1.5px;color:#7d7589;margin:0 0 12px;font-weight:600}
+
+  label.row{display:block;margin-bottom:12px}
+  label.row span{display:flex;justify-content:space-between;font-size:11px;color:#8b8397;margin-bottom:5px;
+                 font-family:"Courier New",monospace}
+  label.row span i{color:#f7b32b;font-style:normal}
+  input[type=range]{width:100%;accent-color:#f7b32b;background:transparent}
+  select{width:100%;background:#1f1a2a;color:#e6e1ee;border:1px solid #3a3348;border-radius:7px;
+         padding:9px 10px;font-size:13px;font-family:inherit}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{background:#1f1a2a;color:#e6e1ee;border:1px solid #3a3348;border-radius:7px;
+         padding:10px 12px;font-size:13px;font-family:inherit;cursor:pointer;flex:1 1 auto;
+         touch-action:manipulation}
+  button:active{border-color:#f7b32b;color:#f7b32b;background:#2a2438}
+  @media(hover:hover){button:hover{border-color:#f7b32b;color:#f7b32b}}
+  button.big{flex:1 1 100%;padding:14px;font-size:15px;background:#2a1f16;border-color:#5c4423;color:#f7b32b}
+  button.ghost{background:transparent}
+
+  .seg{display:flex;gap:0;border:1px solid #3a3348;border-radius:7px;overflow:hidden;margin-bottom:12px}
+  .seg button{border:0;border-radius:0;flex:1;background:#181420;font-size:12px;padding:10px 6px}
+  .seg button.on{background:#f7b32b;color:#1a1420;font-weight:700}
+
+  .note{font-size:11px;line-height:1.75;color:#6e6a72;margin-top:10px;
+        border-left:2px solid #2f2940;padding-left:10px}
+  .note b{color:#c9c2d6;font-weight:600}
+  .note .warn{color:#e8a33a}
+
+  .chk{display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8397;margin-bottom:10px;cursor:pointer}
+  .chk input{accent-color:#f7b32b;width:15px;height:15px}
+  #drop{font-size:11px;color:#5a5563;text-align:center;padding:8px;border:1px dashed #2f2940;
+        border-radius:7px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1><b>OKAWARI QUEST</b>｜門頭屏模擬器 v1.0</h1>
+<div id="meta"></div>
+
+<div id="stage"><div id="screen"><canvas id="led"></canvas><div id="grid"></div></div></div>
+<div id="status"></div>
+
+<div class="panels">
+
+  <!-- ============ 屏規格 ============ -->
+  <div class="card">
+    <h2>屏規格</h2>
+    <select id="preset"></select>
+    <div style="height:12px"></div>
+    <label class="row"><span>檢視縮放 <i id="vZoom"></i></span>
+      <input type="range" id="zoom" min="1" max="14" step="1" value="1"></label>
+    <div class="btns">
+      <button class="ghost" onclick="fitWidth()">符合寬度</button>
+      <button class="ghost" onclick="setZoom(8)">近看 8×</button>
+    </div>
+    <div class="note">
+      放大到 6× 以上才看得出 LED 顆粒，用來判斷 3–4 公尺距離的顆粒感能不能接受。
+      <b>放大後畫面可以左右捲動</b>，或讓它自動跟著勇者跑。
+    </div>
+  </div>
+
+  <!-- ============ 物理模擬 ============ -->
+  <div class="card">
+    <h2>物理模擬</h2>
+    <label class="row"><span>亮度 <i id="vBri"></i></span>
+      <input type="range" id="bri" min="25" max="100" step="5" value="100"></label>
+    <label class="row"><span>觀看距離模糊 <i id="vBlur"></i></span>
+      <input type="range" id="blur" min="0" max="60" step="1" value="0"></label>
+    <label class="chk"><input type="checkbox" id="gaps" checked> 模擬 LED 間隙（燈珠之間的黑）</label>
+    <label class="chk"><input type="checkbox" id="follow" checked> 放大時自動跟隨勇者</label>
+    <div class="note">
+      Notion 記錄：<b>室內 P4 出廠約 1200–1500 nits，建議降到 40–60%。</b>
+      拉到 40–60% 看看畫面還立不立得住——這是相對感受模擬，不是絕對亮度。
+    </div>
+  </div>
+
+  <!-- ============ 播放模式 ============ -->
+  <div class="card">
+    <h2>播放模式</h2>
+    <div class="seg">
+      <button id="mLive" class="on" onclick="setMode('live')">即時運算</button>
+      <button id="mCard" onclick="setMode('card')">預錄節目</button>
+    </div>
+    <label class="row"><span>SwitchProgram 延遲 <i id="vLat"></i></span>
+      <input type="range" id="lat" min="0" max="2000" step="50" value="300"></label>
+    <label class="row"><span>動畫速度 <i id="vSpd"></i></span>
+      <input type="range" id="spd" min="40" max="250" step="10" value="100"></label>
+    <div class="note" id="modeNote"></div>
+  </div>
+
+  <!-- ============ 觸發 ============ -->
+  <div class="card">
+    <h2>觸發</h2>
+    <div class="btns">
+      <button class="big" onclick="trigOkawari()">＋ 續碗 OKAWARI</button>
+      <button onclick="trigProgram('patrol')">巡邏</button>
+      <button onclick="trigProgram('hourly')">整點</button>
+      <button onclick="trigProgram('promo')">促銷圖</button>
+      <button onclick="trigProgram('idle')">回待機</button>
+    </div>
+    <div id="drop">把 PNG 拖進上面的屏 → 變成促銷節目</div>
+    <div class="btns" style="margin-top:10px">
+      <button class="ghost" onclick="exportPNG()">匯出當前幀（原生解析度）</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* ==========================================================
+   OKAWARI 門頭屏模擬器 v1.0
+   對應架構：灰度控制卡（HuiDu）SDK V3.1 / 節目切換模型
+   ========================================================== */
+
+/* ---------- 屏規格預設 ---------- */
+const PRESETS = {
+  p4_1200:{label:'P4 ｜ 480 × 48 cm ｜ 1200 × 120 px ｜ 15×3 模組', cols:1200, rows:120, pitch:4},
+  p4_1280:{label:'P4 ｜ 512 × 48 cm ｜ 1280 × 120 px ｜ 16×3 模組', cols:1280, rows:120, pitch:4},
+  p5_960 :{label:'P5 ｜ 480 × 48 cm ｜ 960 × 96 px ｜ 15×3 模組',  cols:960,  rows:96,  pitch:5},
+  p6_832 :{label:'P6 ｜ 499 × 48 cm ｜ 832 × 80 px ｜ 52×5 模組',  cols:832,  rows:80,  pitch:6},
+  demo   :{label:'現行 demo ｜ 128 × 32 px（對照用）',              cols:128,  rows:32,  pitch:4}
+};
+
+/* ---------- 品牌色 ---------- */
+const RED=[226,58,46], ORG=[240,120,24], YEL=[247,179,43];
+const WHT=[255,253,246], STEEL=[214,218,228], DARK=[26,23,33];
+
+/* ---------- 小勇者 sprite ---------- */
+const SPR_A=[
+"....KKKK....","..KKWWWWKK..",".KWWWWWWWWK.",".KWWWWWWWWK.","KRRRRRRRRRRK",
+".KWWKWWKWWK.",".KWWWWWWWWK.",".KWWWKKWWWK.","..KKWWWWKK..","...KOOOOK...",
+"..KOOOOOOK..","...KK..KK..."];
+const SPR_B=SPR_A.slice(0,11).concat(["..KK....KK.."]);
+const SPC={K:DARK,W:WHT,R:RED,O:ORG};
+const mirror=s=>s.map(r=>[...r].reverse().join(''));
+const SPR_A_L=mirror(SPR_A), SPR_B_L=mirror(SPR_B);
+
+const SWORD_READY=[[11,6,'G'],[12,6,'S'],[13,6,'S'],[14,6,'S'],[15,6,'S'],[16,6,'S']];
+const SWORD_SLASH=[[11,7,'G'],[12,8,'S'],[13,9,'S'],[14,10,'S'],[15,11,'S']];
+const SWC={S:STEEL,G:YEL};
+
+const STONE=["..SSSS..",".SSSSDS.","SSWSSSDS","SSSSDSSS",".SDSSSS.","..SSSS.."];
+const STC={S:[148,150,160],D:[92,94,104],W:[205,208,218]};
+
+/* ---------- DOM ---------- */
+const cv=document.getElementById('led'), ctx=cv.getContext('2d',{alpha:false});
+const stage=document.getElementById('stage');
+const screenEl=document.getElementById('screen');
+const gridEl=document.getElementById('grid');
+const $=id=>document.getElementById(id);
+
+/* ---------- 狀態 ---------- */
+let COLS,ROWS,PITCH,SCALE,SH,STONE_H,PERIOD;
+let off=0, frame=0, zoom=1, promoBuf=null;
+let mode='live';
+let runners=[];                       // 即時運算模式的勇者隊伍
+let prog='idle', pending=null, queue=0, dropped=0;   // 預錄節目模式
+let clip=null;                        // 目前一次性節目的播放狀態
+let txtGrid=null;
+let fps=0, fpsT=performance.now(), fpsN=0;
+
+let imgData=null, D=null, dither=null, baseCol=null;
+let RAMP=new Uint8Array(256*3), RAMP_DIM=new Uint8Array(256*3);
+
+/* ---------- 色階查表 ---------- */
+(function buildRamp(){
+  for(let i=0;i<256;i++){
+    const t=i/255;
+    let c;
+    if(t<0.5){const u=t*2; c=[RED[0]+(ORG[0]-RED[0])*u, RED[1]+(ORG[1]-RED[1])*u, RED[2]+(ORG[2]-RED[2])*u];}
+    else     {const u=(t-0.5)*2; c=[ORG[0]+(YEL[0]-ORG[0])*u, ORG[1]+(YEL[1]-ORG[1])*u, ORG[2]+(YEL[2]-ORG[2])*u];}
+    RAMP[i*3]=c[0]; RAMP[i*3+1]=c[1]; RAMP[i*3+2]=c[2];
+    RAMP_DIM[i*3]=c[0]*0.38; RAMP_DIM[i*3+1]=c[1]*0.38; RAMP_DIM[i*3+2]=c[2]*0.38;
+  }
+})();
+
+/* ---------- 建立畫布 ---------- */
+function setupScreen(key){
+  const p=PRESETS[key];
+  COLS=p.cols; ROWS=p.rows; PITCH=p.pitch;
+  SCALE=Math.max(1, Math.round(ROWS*0.72/12));
+  SH=12*SCALE; STONE_H=6*SCALE; PERIOD=COLS*1.6;
+
+  cv.width=COLS; cv.height=ROWS;
+  imgData=ctx.createImageData(COLS,ROWS);
+  D=imgData.data;
+  for(let i=3;i<D.length;i+=4) D[i]=255;
+
+  dither=new Float32Array(COLS*ROWS);
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++)
+    dither[y*COLS+x]=(((x*7+y*13)%17)/17-0.5)*0.22;
+  baseCol=new Float32Array(COLS);
+
+  txtGrid=makeText('おかわり おめでとう!', Math.max(7, Math.round(ROWS*0.26)));
+  promoBuf=null;
+  runners=[]; clip=null; prog='idle'; pending=null; queue=0; dropped=0;
+  fitWidth();
+  updateMeta();
+}
+
+/* ---------- 文字點陣 ---------- */
+function makeText(str,px){
+  const oc=document.createElement('canvas'), o=oc.getContext('2d');
+  const font=`bold ${px}px "MS Gothic","Noto Sans Mono CJK TC","Courier New",monospace`;
+  o.font=font;
+  let w=Math.ceil(o.measureText(str).width)||10, h=px+4;
+  oc.width=w; oc.height=h; o.font=font;
+  o.fillStyle='#fff'; o.textBaseline='top'; o.fillText(str,0,0);
+  const d=o.getImageData(0,0,w,h).data, g=[];
+  for(let y=0;y<h;y++){const row=[];for(let x=0;x<w;x++)row.push(d[(y*w+x)*4+3]>110?1:0);g.push(row);}
+  return g;
+}
+
+/* ---------- 畫素工具（寫進 buffer） ---------- */
+function px(x,y,c){
+  if(x<0||x>=COLS||y<0||y>=ROWS) return;
+  const i=(y*COLS+x)*4; D[i]=c[0]; D[i+1]=c[1]; D[i+2]=c[2];
+}
+function fillRect(x0,y0,w,h,c){
+  const xa=Math.max(0,x0), xb=Math.min(COLS,x0+w);
+  const ya=Math.max(0,y0), yb=Math.min(ROWS,y0+h);
+  for(let y=ya;y<yb;y++){
+    let i=(y*COLS+xa)*4;
+    for(let x=xa;x<xb;x++){ D[i]=c[0]; D[i+1]=c[1]; D[i+2]=c[2]; i+=4; }
+  }
+}
+function blit(spr,ox,oy,pal){
+  const P=pal||SPC, s=SCALE;
+  for(let sy=0;sy<spr.length;sy++){
+    const row=spr[sy];
+    for(let sx=0;sx<row.length;sx++){
+      const ch=row[sx]; if(ch==='.') continue;
+      fillRect(ox+sx*s, oy+sy*s, s, s, P[ch]);
+    }
+  }
+}
+function blitCells(cells,ox,oy,dir){
+  const s=SCALE;
+  for(const [cx,cy,ch] of cells){
+    const sx = dir<0 ? (11-cx) : cx;
+    fillRect(ox+sx*s, oy+cy*s, s, s, SWC[ch]);
+  }
+}
+function drawText(g,ox,oy,c){
+  for(let y=0;y<g.length;y++){
+    const row=g[y];
+    for(let x=0;x<row.length;x++) if(row[x]) px(ox+x, oy+y, c);
+  }
+}
+function burst(cx,cy,r,c){
+  const n=Math.max(10, r*3|0);
+  for(let i=0;i<n;i++){
+    const a=i/n*Math.PI*2;
+    px(Math.round(cx+Math.cos(a)*r), Math.round(cy+Math.sin(a)*r*0.6), c);
+  }
+}
+
+/* ---------- 底層漸變 ---------- */
+function gradient(dim){
+  const R = dim?RAMP_DIM:RAMP;
+  for(let x=0;x<COLS;x++){
+    let pos=((x+off)%PERIOD)/PERIOD;
+    baseCol[x]= pos<0.5 ? pos*2 : (1-pos)*2;
+  }
+  let i=0, k=0;
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      let t=baseCol[x]+dither[k++];
+      t = t<0?0 : t>1?1 : t;
+      const j=(t*255)|0, j3=j*3;
+      D[i]=R[j3]; D[i+1]=R[j3+1]; D[i+2]=R[j3+2]; i+=4;
+    }
+  }
+}
+
+/* ---------- 速度 ---------- */
+function spdMul(){ return $('spd').value/100; }
+function runSpeed(){ return COLS/300 * spdMul(); }
+function patrolSpeed(){ return COLS/620 * spdMul(); }
+
+/* ==========================================================
+   即時運算模式（現在 demo 的行為）
+   ========================================================== */
+function liveOkawari(){
+  const hit=Math.random()<0.6;
+  let startX=-16*SCALE;
+  if(runners.length) startX=Math.min(startX, runners[runners.length-1].x - 26*SCALE);
+  const stoneX = hit ? Math.round(COLS*(0.35+Math.random()*0.35)) : -999;
+  runners.push({x:startX,t:0,stoneX,state:'run',aT:0,debris:null});
+}
+function drawRunner(r){
+  const hx=Math.round(r.x), hy=ROWS-SH, sp=runSpeed();
+  if(r.state==='run'){
+    r.x+=sp; r.t++;
+    if(r.stoneX>=0) blit(STONE, r.stoneX, ROWS-STONE_H, STC);
+    blit(r.t%16<8?SPR_A:SPR_B, hx, hy);
+    blitCells(SWORD_READY, hx, hy, 1);
+    if(r.stoneX>=0 && r.x+17*SCALE>=r.stoneX){ r.state='strike'; r.aT=0; }
+  } else if(r.state==='strike'){
+    r.aT++;
+    blit(STONE, r.stoneX, ROWS-STONE_H, STC);
+    blit(SPR_A, hx, hy);
+    const slash=(r.aT%14)>=7;
+    blitCells(slash?SWORD_SLASH:SWORD_READY, hx, hy, 1);
+    if(slash) burst(r.stoneX+4*SCALE, ROWS-STONE_H+2*SCALE, 3*SCALE, WHT);
+    if(r.aT>=28){
+      r.state='burst'; r.aT=0; r.debris=[];
+      for(let i=0;i<14;i++) r.debris.push({
+        x:r.stoneX+4*SCALE, y:ROWS-4*SCALE,
+        vx:(-1+Math.random()*2.4)*SCALE*0.6, vy:(-2.2+Math.random()*1.2)*SCALE*0.6});
+    }
+  } else {
+    r.aT++;
+    const bx=r.stoneX+4*SCALE, by=ROWS-6*SCALE;
+    blit(SPR_A, hx, hy);
+    blitCells(SWORD_SLASH, hx, hy, 1);
+    const ph=r.aT%18;
+    burst(bx,by,(2+ph*0.9)*SCALE*0.7, YEL);
+    if(ph>4) burst(bx,by, ph*0.7*SCALE*0.7, WHT);
+    for(const d of r.debris){ d.x+=d.vx; d.y+=d.vy; d.vy+=0.09*SCALE; px(Math.round(d.x),Math.round(d.y),STC.S); }
+    const tw=txtGrid[0].length, ty=Math.max(1, Math.round(ROWS*0.10));
+    if(r.aT%14<10) drawText(txtGrid, Math.round((COLS-tw)/2), ty, YEL);
+    if(r.aT>84){ r.state='run'; r.stoneX=-999; }
+  }
+}
+
+/* ==========================================================
+   預錄節目模式（灰度卡實際能做的）
+   ========================================================== */
+function startClip(kind){
+  if(kind==='patrol'){
+    clip={kind, x:-14*SCALE, t:0, dir:1};
+  } else if(kind==='okawari'){
+    clip={kind, x:-16*SCALE, t:0, stoneX:Math.round(COLS*0.55), state:'run', aT:0, debris:null};
+  } else if(kind==='hourly'){
+    clip={kind, x:-14*SCALE, t:0, dir:1};
+  } else clip=null;
+}
+function drawClip(){
+  if(!clip) return true;
+  const hy=ROWS-SH;
+  if(clip.kind==='patrol' || clip.kind==='hourly'){
+    clip.x+=patrolSpeed()*(clip.kind==='hourly'?1.4:1); clip.t++;
+    const walk=clip.t%20<10;
+    blit(walk?SPR_A:SPR_B, Math.round(clip.x), hy);
+    blitCells(SWORD_READY, Math.round(clip.x), hy, 1);
+    if(clip.kind==='hourly'){
+      const tw=txtGrid[0].length, ty=Math.max(1, Math.round(ROWS*0.10));
+      if(clip.t%20<14) drawText(txtGrid, Math.round((COLS-tw)/2), ty, YEL);
+    }
+    return clip.x > COLS+4*SCALE;
+  }
+  if(clip.kind==='okawari'){
+    const r=clip, hx=Math.round(r.x);
+    drawRunner(r);
+    return r.x > COLS+4*SCALE;
+  }
+  return true;
+}
+function requestSwitch(to){
+  const lat=+$('lat').value;
+  pending={to, at:performance.now()+lat};
+}
+
+/* ---------- 觸發 ---------- */
+function trigOkawari(){
+  if(mode==='live'){ liveOkawari(); return; }
+  if(prog==='okawari' || (pending&&pending.to==='okawari')){ queue++; dropped++; return; }
+  requestSwitch('okawari');
+}
+function trigProgram(k){
+  if(mode==='live'){
+    if(k==='patrol'||k==='hourly'){ liveOkawari(); }
+    return;
+  }
+  requestSwitch(k);
+}
+
+/* ==========================================================
+   主迴圈
+   ========================================================== */
+function tick(){
+  frame++;
+  const busy = mode==='live' ? runners.length>0
+             : (prog==='okawari');
+  off += busy?0.25:0.6;
+
+  if(mode==='card' && prog==='promo' && promoBuf){
+    D.set(promoBuf);
+  } else {
+    gradient(busy);
+  }
+
+  if(mode==='live'){
+    for(const r of runners) drawRunner(r);
+    runners=runners.filter(r=>r.x<=COLS+6*SCALE);
+  } else {
+    /* 延遲結算 */
+    if(pending && performance.now()>=pending.at){
+      prog=pending.to; pending=null;
+      if(prog==='okawari'||prog==='patrol'||prog==='hourly') startClip(prog);
+      else clip=null;
+    }
+    if(clip){
+      const done=drawClip();
+      if(done){
+        clip=null;
+        if(prog==='okawari' && queue>0){ queue--; startClip('okawari'); }
+        else requestSwitch('idle');
+      }
+    }
+  }
+
+  ctx.putImageData(imgData,0,0);
+
+  /* 放大時自動跟隨主角 */
+  if(zoom>=4 && $('follow').checked){
+    let fx=null;
+    if(mode==='live' && runners.length) fx=runners[0].x;
+    else if(clip) fx=clip.x;
+    if(fx!==null){
+      const want=fx*zoom - stage.clientWidth/2;
+      stage.scrollLeft += (want-stage.scrollLeft)*0.18;
+    }
+  }
+
+  /* FPS */
+  fpsN++;
+  const now=performance.now();
+  if(now-fpsT>500){ fps=Math.round(fpsN*1000/(now-fpsT)); fpsN=0; fpsT=now; renderStatus(); }
+
+  requestAnimationFrame(tick);
+}
+
+/* ==========================================================
+   顯示控制
+   ========================================================== */
+function applyGrid(){
+  const on = zoom>=4 && $('gaps').checked;
+  gridEl.style.display = on ? 'block' : 'none';
+  if(!on) return;
+  gridEl.style.backgroundImage =
+    'radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0 38%, #08070c 44% 100%)';
+  gridEl.style.backgroundSize = zoom+'px '+zoom+'px';
+}
+function setZoom(z){
+  zoom=Math.max(1,Math.min(14,Math.round(z)));
+  $('zoom').value=zoom;
+  screenEl.style.width =(COLS*zoom)+'px';
+  screenEl.style.height=(ROWS*zoom)+'px';
+  applyGrid();
+  applyFilter();
+  $('vZoom').textContent=zoom+'×';
+  updateMeta();
+  requestAnimationFrame(()=>{ stage.scrollTop = Math.max(0, screenEl.offsetHeight - stage.clientHeight + 24); });
+}
+function fitWidth(){
+  const w=stage.clientWidth-24;
+  setZoom(Math.max(1, Math.floor(w/COLS)) );
+  if(COLS*zoom < w*0.6){ /* 小屏時允許放大 */ setZoom(Math.floor(w/COLS)); }
+}
+function applyFilter(){
+  const b=$('bri').value/100;
+  const bl=($('blur').value/10)*(zoom/4);
+  screenEl.style.filter=`brightness(${b}) blur(${bl.toFixed(2)}px)`;
+  $('vBri').textContent=$('bri').value+'%';
+  $('vBlur').textContent=$('blur').value==0?'關':($('blur').value/10).toFixed(1);
+}
+function updateMeta(){
+  const key=$('preset').value, p=PRESETS[key];
+  const wcm=(COLS*PITCH/10).toFixed(0), hcm=(ROWS*PITCH/10).toFixed(0);
+  $('meta').innerHTML =
+    `${COLS} × ${ROWS} px　｜　P${PITCH}　｜　實體約 <em>${wcm} × ${hcm} cm</em>　`+
+    `｜　比例 <em>${(COLS/ROWS).toFixed(1)}:1</em>　｜　勇者高 <em>${SH} px</em>（畫面 ${(SH/ROWS*100).toFixed(0)}%）`+
+    `　｜　檢視 ${zoom}×`;
+}
+function renderStatus(){
+  const s=$('status');
+  if(mode==='live'){
+    s.innerHTML=`模式 <span class="now">即時運算</span>　｜　勇者隊伍 <span class="q">${runners.length}</span>`+
+                `　｜　${fps} fps　｜　<span class="q">無切換延遲，可無限排隊</span>`;
+  } else {
+    const swTxt = pending
+      ? `<span class="sw">SwitchProgram → ${pending.to.toUpperCase()} 等待中…</span>`
+      : `<span class="q">待命</span>`;
+    s.innerHTML=`模式 <span class="now">預錄節目</span>　｜　現正播放 <span class="now">${prog.toUpperCase()}</span>`+
+                `　｜　${swTxt}　｜　排隊 ${queue}　｜　<span class="sw">播放中被擋掉 ${dropped}</span>　｜　${fps} fps`;
+  }
+}
+function setMode(m){
+  mode=m;
+  $('mLive').classList.toggle('on', m==='live');
+  $('mCard').classList.toggle('on', m==='card');
+  runners=[]; clip=null; prog='idle'; pending=null; queue=0; dropped=0;
+  $('modeNote').innerHTML = m==='live'
+    ? `<b>即時運算</b>＝現在 demo 的做法。勇者可以無限排隊、破石機率每次擲骰、按下去<b>零延遲</b>。<br>
+       <span class="warn">但灰度卡做不到這件事</span>——它只能播預錄好的節目。這個模式是給你當「理想值」對照。`
+    : `<b>預錄節目</b>＝灰度卡實際能做的。每個事件是一段錄好的影片，用 SwitchProgram 切過去。<br>
+       <span class="warn">代價一：有切換延遲</span>（拉左邊的滑桿感受一下 300ms / 800ms / 1500ms 的差別）。<br>
+       <span class="warn">代價二：播放中再按會被擋掉</span>（看上方的計數），沒辦法像即時運算那樣排隊。`;
+  renderStatus();
+}
+
+/* ---------- 匯出 ---------- */
+function exportPNG(){
+  const a=document.createElement('a');
+  a.download=`okawari_${COLS}x${ROWS}_${Date.now()}.png`;
+  a.href=cv.toDataURL('image/png');
+  a.click();
+}
+
+/* ---------- 拖放促銷圖 ---------- */
+stage.addEventListener('dragover',e=>{e.preventDefault(); stage.classList.add('drag');});
+stage.addEventListener('dragleave',()=>stage.classList.remove('drag'));
+stage.addEventListener('drop',e=>{
+  e.preventDefault(); stage.classList.remove('drag');
+  const f=e.dataTransfer.files[0]; if(!f||!f.type.startsWith('image')) return;
+  const img=new Image();
+  img.onload=()=>{
+    const t=document.createElement('canvas'); t.width=COLS; t.height=ROWS;
+    const c=t.getContext('2d'); c.imageSmoothingEnabled=false;
+    c.fillStyle='#000'; c.fillRect(0,0,COLS,ROWS);
+    const sc=Math.min(COLS/img.width, ROWS/img.height);
+    const w=img.width*sc, h=img.height*sc;
+    c.drawImage(img,(COLS-w)/2,(ROWS-h)/2,w,h);
+    promoBuf=new Uint8ClampedArray(c.getImageData(0,0,COLS,ROWS).data);
+    setMode('card'); requestSwitch('promo');
+  };
+  img.src=URL.createObjectURL(f);
+});
+
+/* ---------- 綁定 ---------- */
+(function init(){
+  const sel=$('preset');
+  for(const k in PRESETS){
+    const o=document.createElement('option');
+    o.value=k; o.textContent=PRESETS[k].label; sel.appendChild(o);
+  }
+  sel.value='p4_1200';
+  sel.onchange=()=>{ setupScreen(sel.value); setMode(mode); };
+
+  $('zoom').oninput=e=>setZoom(+e.target.value);
+  $('bri').oninput=applyFilter;
+  $('blur').oninput=applyFilter;
+  $('gaps').onchange=applyGrid;
+  $('lat').oninput=e=>$('vLat').textContent=e.target.value+' ms';
+  $('spd').oninput=e=>$('vSpd').textContent=e.target.value+'%';
+  $('vLat').textContent=$('lat').value+' ms';
+  $('vSpd').textContent=$('spd').value+'%';
+
+  window.addEventListener('resize',()=>{ /* 保持使用者的 zoom */ updateMeta(); });
+  window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); trigOkawari(); }});
+
+  setupScreen('p4_1200');
+  applyFilter();
+  setMode('live');
+  tick();
+})();
+</script>
+</body>
+</html>
