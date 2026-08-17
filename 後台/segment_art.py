@@ -117,7 +117,12 @@ def render_noon(cols, rows, p=None):
 
 # ---------------------------------------------------------------- 午後
 def render_siesta(cols, rows, p=None):
-    """午後發呆 Zzz：躺在食物上睡覺，冒 ZZZ，偶爾翻身。"""
+    """午後發呆 Zzz：靠著一碗飯打盹，冒 ZZZ，偶爾翻身。
+
+    這一段刻意最安靜 —— 沒客人的時段，畫面不該一直動。
+    但「不動」跟「壞掉」在屏上長得很像，所以還是要有呼吸感：
+    緩慢的上下起伏 + 持續飄的 ZZZ，讓人一眼知道它還活著。
+    """
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
     SP = _ch(q)
@@ -127,31 +132,39 @@ def render_siesta(cols, rows, p=None):
     ph = len(pose)
     s = _scale(ph, rows, q)
     sw = max(len(r) for r in pose) * s
+    bw, bh = len(PROPS.BOWL[0]) * s, len(PROPS.BOWL) * s
+
+    x = (cols - sw) // 2
+    base_y = rows - ph * s - max(1, s)
 
     out = []
     for i in range(n):
-        im = sc.gradient(phase=0.06 + 0.03 * (i / n))
+        t = i / n
+        im = sc.gradient(phase=0.06 + 0.03 * t)
         d = ImageDraw.Draw(im)
 
-        x = (cols - sw) // 2
-        y = rows - ph * s - max(1, s)
+        # 呼吸：很慢的一上一下，一輪呼吸大約四秒
+        breathe = -s if int(t * n / max(1, int(q["siesta_fps"] * 2))) % 2 else 0
+        y = base_y + breathe
 
-        # 偶爾翻身：整段有兩次，翻身時左右翻面
-        flip = (0.42 < (i / n) < 0.58)
+        # 翻身：整段中間翻一次，翻的時候左右翻面
+        flip = 0.44 < t < 0.56
+
+        # 那碗飯擺在角色旁邊，不要疊在身上 ——
+        # 疊上去的話碗會蓋住臉，遠看像長了紅鬍子。
+        bx = x - bw - s if not flip else x + sw + s
+        _blit_prop(d, PROPS.BOWL, bx, rows - bh - max(1, s), s)
+
         _blit(d, pose, x, y, s, SP.PAL, flip=flip)
 
-        # 底下墊一碗飯
-        _blit_prop(d, PROPS.BOWL, x + sw // 2 - len(PROPS.BOWL[0]) * s // 2,
-              rows - len(PROPS.BOWL) * s - max(1, s), s)
-
-        # ZZZ 往右上飄，三個字母錯開
+        # ZZZ：三個往右上飄，越飄越高。用 2×2 的塊，一個像素太小看不到。
         for k in range(3):
-            t = ((i * 0.35) + k * 5) % 15
-            zx = x + sw + int(t) * s
-            zy = y - s + int(t * 0.6) * s
-            zy = y - int(t) * s // 2
-            if 0 < zy < rows and zx < cols:
-                d.rectangle([zx, zy, zx + s - 1, zy + s - 1], fill=PROPS.PAL["W"])
+            u = ((i * 0.6) + k * 7) % 21 / 21.0
+            zx = x + sw + int(u * 14) * s
+            zy = y - int(u * 9) * s - s
+            if zy > 0 and zx + 2 * s < cols:
+                d.rectangle([zx, zy, zx + 2 * s - 1, zy + 2 * s - 1],
+                            fill=PROPS.PAL["W"])
         out.append(im)
     return out
 
