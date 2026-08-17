@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OKAWARI 門頭屏 · 角色</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e23a2e'/><rect x='5' y='12' width='22' height='8' rx='2' fill='%23f7b32b'/></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#141010;--panel:#1e1816;--line:#3a2e28;--ink:#f6efe8;
+      --dim:#a2938a;--dim2:#6f625b;--red:#e23a2e;--org:#f07818;--yel:#f7b32b}
+body{background:var(--bg);color:var(--ink);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  -webkit-font-smoothing:antialiased;padding-bottom:70px}
+.wrap{max-width:1000px;margin:0 auto;padding:0 22px}
+a{color:var(--yel)}
+
+header{padding:52px 0 32px;border-bottom:1px solid var(--line)}
+.brand{display:inline-flex;align-items:center;gap:11px;font-size:13px;
+  letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
+.brand i{width:30px;height:11px;border-radius:3px;display:block;
+  background:linear-gradient(90deg,var(--red),var(--yel))}
+h1{font-size:clamp(26px,4.6vw,38px);font-weight:800;letter-spacing:-.01em;line-height:1.25}
+.lede{color:var(--dim);margin-top:14px;max-width:600px}
+
+section{padding:40px 0}
+h2{font-size:13px;letter-spacing:.16em;color:var(--dim);
+  text-transform:uppercase;margin-bottom:14px;font-weight:600}
+
+/* ---------------------------------------------------------- 切換 */
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.tab{flex:1;min-width:150px;text-align:left;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:14px 16px;transition:border-color .15s,background .15s}
+.tab:hover{background:#241d1a}
+.tab.on{border-color:var(--org);background:#2a201a}
+.tab b{display:block;font-size:17px;margin-bottom:2px}
+.tab span{font-size:12.5px;color:var(--dim);line-height:1.5;display:block}
+
+/* ---------------------------------------------------------- 屏 */
+.screen{border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  background:#000;box-shadow:0 18px 44px #0008}
+.screen canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.bar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:14px}
+.btn{cursor:pointer;background:var(--panel);border:1px solid var(--line);
+  color:var(--ink);border-radius:9px;padding:8px 15px;font-size:14px;
+  font-weight:600;transition:background .15s}
+.btn:hover{background:#2c2320}
+.btn.on{background:var(--org);border-color:var(--org);color:#1a1008}
+.spacer{flex:1}
+.hint{color:var(--dim2);font-size:12.5px;font-variant-numeric:tabular-nums}
+
+/* ---------------------------------------------------------- 姿勢表 */
+.poses{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));
+  gap:12px;margin-top:22px}
+.pose{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:12px 8px 9px;text-align:center}
+.pose canvas{display:block;margin:0 auto;image-rendering:pixelated;height:104px;width:auto}
+.pose span{display:block;margin-top:8px;font-size:12px;color:var(--dim)}
+
+.side{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+@media(max-width:620px){.side{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.card b{display:block;margin-bottom:5px}
+.card span{color:var(--dim);font-size:14px}
+footer{padding:34px 0;text-align:center;color:var(--dim2);font-size:13px;
+  border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <div class="brand"><i></i>OKAWARI 門頭屏</div>
+  <h1>兩個角色</h1>
+  <p class="lede">
+    小飯碗負責過完一整天，丼飯在客人做了什麼的時候才出場。
+    下面可以切換著看，畫面比例就是台南門市的 960 × 120。
+  </p>
+</div></header>
+
+<section><div class="wrap">
+  <h2>選一個角色</h2>
+  <div class="tabs" id="tabs"></div>
+
+  <div class="screen"><canvas id="stage" width="960" height="120"></canvas></div>
+  <div class="bar">
+    <button class="btn on" id="playbtn" onclick="toggle()">⏸ 暫停</button>
+    <button class="btn" onclick="setSpeed(0.5)">慢速</button>
+    <button class="btn on" id="sp1" onclick="setSpeed(1)">正常</button>
+    <span class="spacer"></span>
+    <span class="hint" id="info">—</span>
+  </div>
+
+  <h2 style="margin-top:36px">全部姿勢</h2>
+  <div class="poses" id="poses"></div>
+
+  <div class="side">
+    <div class="card"><b id="c1">—</b><span id="c1d">—</span></div>
+    <div class="card"><b>為什麼是像素風</b><span>
+      LED 的每一顆燈就是一個像素。順著這個特性做，遠看清楚、近看有質感，
+      而不是把高解析度的圖硬塞進去糊掉。</span></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <a href="preview.html">← 回四段常駐畫面</a>　·　ON Design Lab
+</div></footer>
+
+<script>
+/* ==================================================================
+   角色檢視器
+
+   sprite 資料是從後台的 Python 直接匯出來的（preview/sprites.json），
+   跟編影片用的是同一份，所以這裡看到的就是上屏會長的樣子。
+   背景漸層也照 artwork.py 的公式重算，不是貼圖。
+   ================================================================== */
+const $ = id => document.getElementById(id);
+
+/* 品牌漸層：紅 → 橘 → 黃，跟 artwork.py 的 RAMP 同一組 */
+const RED=[226,58,46], ORG=[240,120,24], YEL=[247,179,43];
+const RAMP = (()=>{ const r=new Uint8Array(768);
+  for(let i=0;i<256;i++){ const t=i/255; let c;
+    if(t<0.5){const u=t*2; c=RED.map((v,k)=>v+(ORG[k]-v)*u);}
+    else {const u=(t-0.5)*2; c=ORG.map((v,k)=>v+(YEL[k]-v)*u);}
+    r[i*3]=c[0]|0; r[i*3+1]=c[1]|0; r[i*3+2]=c[2]|0; }
+  return r; })();
+
+const W=960, H=120, WIN=0.72, DITH=0.22;
+const dth=[]; for(let k=0;k<17;k++) dth.push(((k/17)-0.5)*DITH);
+
+function gradient(g, phase){
+  const img=g.createImageData(W,H), px=img.data, span=W-1;
+  let i=0;
+  for(let y=0;y<H;y++){ const d13=13*y;
+    for(let x=0;x<W;x++){
+      let t=phase+(x/span)*WIN+dth[(7*x+d13)%17];
+      t=t<0?0:(t>1?1:t);
+      const o=(t*255|0)*3;
+      px[i++]=RAMP[o]; px[i++]=RAMP[o+1]; px[i++]=RAMP[o+2]; px[i++]=255;
+    }}
+  g.putImageData(img,0,0);
+}
+
+function drawSprite(g, spr, pal, ox, oy, s){
+  for(let y=0;y<spr.length;y++){
+    const row=spr[y];
+    for(let x=0;x<row.length;x++){
+      const ch=row[x];
+      if(ch==='.'||!pal[ch]) continue;
+      g.fillStyle=pal[ch];
+      g.fillRect(ox+x*s, oy+y*s, s, s);
+    }}
+}
+
+let DATA=null, cur='bowl', playing=true, speed=1, t0=0, raf=null;
+
+fetch('preview/sprites.json').then(r=>r.json()).then(d=>{
+  DATA=d; buildTabs(); pick('bowl'); loop(0);
+}).catch(e=>{ $('info').textContent='角色資料載入失敗：'+e.message; });
+
+function buildTabs(){
+  $('tabs').innerHTML = Object.entries(DATA).map(([k,v])=>
+    `<button class="tab${k===cur?' on':''}" data-k="${k}" onclick="pick('${k}')">
+       <b>${v.name}</b><span>${v.desc}</span></button>`).join('');
+}
+
+function pick(k){
+  cur=k;
+  document.querySelectorAll('.tab').forEach(t=>
+    t.classList.toggle('on', t.dataset.k===k));
+  const v=DATA[k];
+  $('c1').textContent=v.name;
+  $('c1d').textContent=v.desc;
+
+  const first=Object.values(v.poses)[0];
+  const rows=first.length, cols=Math.max(...first.map(r=>r.length));
+  $('info').textContent=`${rows} 列 × ${cols} 欄　畫面高 ${Math.round(H*0.72/rows)*rows} px`;
+
+  /* 姿勢表 */
+  const LABEL={stand:'站', walk_a:'走 A', walk_b:'走 B',
+               cheer:'歡呼', hold:'端東西', sit:'坐下'};
+  $('poses').innerHTML=Object.keys(v.poses).map(p=>
+    `<div class="pose"><canvas data-p="${p}"></canvas><span>${LABEL[p]||p}</span></div>`).join('');
+  document.querySelectorAll('.pose canvas').forEach(c=>{
+    const spr=v.poses[c.dataset.p];
+    const w=Math.max(...spr.map(r=>r.length)), s=4;
+    c.width=w*s; c.height=spr.length*s;
+    const g=c.getContext('2d');
+    g.fillStyle='#191512'; g.fillRect(0,0,c.width,c.height);
+    drawSprite(g, spr, v.pal, 0, 0, s);
+  });
+}
+
+function loop(now){
+  raf=requestAnimationFrame(loop);
+  if(!DATA) return;
+  if(!t0) t0=now;
+  const el=(now-t0)/1000*speed;
+  const g=$('stage').getContext('2d');
+  gradient(g, 0.10+0.05*((el/14)%1));
+
+  const v=DATA[cur];
+  const frames=v.walk.map(n=>v.poses[n]);
+  const rows=frames[0].length;
+  const s=Math.max(1, Math.round(H*0.72/rows));
+  const sw=Math.max(...frames[0].map(r=>r.length))*s;
+
+  const i=Math.floor(el*25);
+  const spr=frames[Math.floor(i/v.walk_every)%frames.length];
+  const span=W+sw*2;
+  const x=Math.round(-sw + span*((el/9)%1));
+  drawSprite(g, spr, v.pal, x, H-rows*s-Math.max(1,s), s);
+}
+
+function toggle(){
+  playing=!playing;
+  $('playbtn').textContent = playing ? '⏸ 暫停' : '▶ 播放';
+  $('playbtn').classList.toggle('on', playing);
+  if(playing){ t0=0; loop(0); } else if(raf) cancelAnimationFrame(raf);
+}
+function setSpeed(v){
+  speed=v;
+  document.querySelectorAll('.bar .btn').forEach((b,i)=>{
+    if(i>0 && i<3) b.classList.toggle('on', (i===1)===(v===0.5));
+  });
+}
+</script>
+</body>
+</html>
