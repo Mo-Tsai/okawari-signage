@@ -127,3 +127,5 @@ POSES = {
     "hold":   compose(ARM_HOLD,  LEGS_WALK_A),      # 端著飯
     "sit":    compose(ARM_HOLD,  LEGS_SIT),
 }
+
+POSES["sleep"] = POSES["sit"]      # 兩個角色的姿勢名稱要一致

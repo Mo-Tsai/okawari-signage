@@ -18,12 +18,26 @@ playControl，由卡自己按時鐘播。這裡只負責畫。
 from PIL import ImageDraw
 
 import artwork
-import bowl_sprite as SP
+import bowl_sprite
+import don_sprite
+
+# 主角是可以換的。stores.json 的 params.character 決定編出來是誰主演，
+# 分鏡完全一樣 —— 業主要比較兩個角色時，比的才是角色本身，不是分鏡。
+CHARACTERS = {
+    "bowl": bowl_sprite,     # 小飯碗（IG 那個像素小孩）
+    "don":  don_sprite,      # 丼飯（長手腳的牛丼）
+}
+SP = bowl_sprite             # 預設，_ch() 會覆寫
+PROPS = bowl_sprite          # 碗、蒸氣這些道具不屬於任何角色，兩邊共用
+
+
+def _ch(p):
+    return CHARACTERS.get(str((p or {}).get("character", "bowl")), bowl_sprite)
 
 
 def _blit(d, spr, ox, oy, s, pal=None, flip=False):
     """把 sprite 畫上去。s 是每格幾個像素。"""
-    pal = pal or SP.PAL
+    pal = pal or bowl_sprite.PAL
     w = max(len(r) for r in spr)
     for sy, row in enumerate(spr):
         for sx, ch in enumerate(row):
@@ -34,13 +48,19 @@ def _blit(d, spr, ox, oy, s, pal=None, flip=False):
             d.rectangle([x0, y0, x0 + s - 1, y0 + s - 1], fill=pal[ch])
 
 
+def _blit_prop(d, spr, ox, oy, s, _pal=None):
+    """畫道具。道具的顏色不跟著角色換。"""
+    _blit(d, spr, ox, oy, s, PROPS.PAL)
+
+
 def _scale(rows, canvas_h, p):
     """角色要多大。跟舊版共用 hero_scale，門市三塊屏才會是同一個比例。"""
     return max(1, round(canvas_h * p["hero_scale"] / rows))
 
 
-def _walk_frame(i):
+def _walk_frame(i, SP=None):
     """走路兩幀交替。每 6 格換一次腳，跟模擬器的節奏一樣。"""
+    SP = SP or bowl_sprite
     return SP.POSES["walk_a"] if (i // 6) % 2 == 0 else SP.POSES["walk_b"]
 
 
@@ -52,6 +72,7 @@ def render_noon(cols, rows, p=None):
     """
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
+    SP = _ch(q)
     n = artwork.frame_count(q, "noon")
 
     pose = SP.POSES["hold"]
@@ -59,7 +80,7 @@ def render_noon(cols, rows, p=None):
     s = _scale(ph, rows, q)
     sw = max(len(r) for r in pose) * s
 
-    bowl_w = len(SP.BOWL[0]) * s
+    bowl_w = len(PROPS.BOWL[0]) * s
     span = cols + sw * 2                      # 從左邊外面走到右邊外面
 
     out = []
@@ -70,16 +91,15 @@ def render_noon(cols, rows, p=None):
         x = int(-sw + span * (i / n))
         y = rows - ph * s - max(1, s)
 
-        # 走路用 walk 兩幀，但手維持端東西的姿勢
-        legs = _walk_frame(i)
-        _blit(d, legs[:len(SP.BODY)], x, y, s)          # 身體（含端飯的手）
-        _blit(d, pose, x, y, s)
-        _blit(d, legs[len(SP.BODY):], x, y + len(SP.BODY) * s, s)
+        # 端著飯走。走路的換腳交給 walk 兩幀，端東西的手勢用 hold，
+        # 兩者交替就有「邊走邊端」的感覺，而且不必知道角色內部怎麼拆的。
+        spr = pose if (i // 6) % 2 == 0 else _walk_frame(i, SP)
+        _blit(d, spr, x, y, s, SP.PAL)
 
         # 碗端在身體前方
         bx = x + sw - s
         by = y + int(ph * 0.62) * s
-        _blit(d, SP.BOWL, bx, by, s)
+        _blit_prop(d, PROPS.BOWL, bx, by, s)
 
         # 蒸氣：三道，各自相位不同，往上飄
         for k in range(3):
@@ -88,7 +108,7 @@ def render_noon(cols, rows, p=None):
             sx = bx + (k + 1) * 2 * s
             if sy > 0:
                 d.rectangle([sx, sy, sx + s - 1, sy + s - 1],
-                            fill=SP.PAL["W"])
+                            fill=PROPS.PAL["W"])
         out.append(im)
     return out
 
@@ -98,9 +118,10 @@ def render_siesta(cols, rows, p=None):
     """午後發呆 Zzz：躺在食物上睡覺，冒 ZZZ，偶爾翻身。"""
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
+    SP = _ch(q)
     n = artwork.frame_count(q, "siesta")
 
-    pose = SP.POSES["sit"]
+    pose = SP.POSES["sleep"]
     ph = len(pose)
     s = _scale(ph, rows, q)
     sw = max(len(r) for r in pose) * s
@@ -115,11 +136,11 @@ def render_siesta(cols, rows, p=None):
 
         # 偶爾翻身：整段有兩次，翻身時左右翻面
         flip = (0.42 < (i / n) < 0.58)
-        _blit(d, pose, x, y, s, flip=flip)
+        _blit(d, pose, x, y, s, SP.PAL, flip=flip)
 
         # 底下墊一碗飯
-        _blit(d, SP.BOWL, x + sw // 2 - len(SP.BOWL[0]) * s // 2,
-              rows - len(SP.BOWL) * s - max(1, s), s)
+        _blit_prop(d, PROPS.BOWL, x + sw // 2 - len(PROPS.BOWL[0]) * s // 2,
+              rows - len(PROPS.BOWL) * s - max(1, s), s)
 
         # ZZZ 往右上飄，三個字母錯開
         for k in range(3):
@@ -128,7 +149,7 @@ def render_siesta(cols, rows, p=None):
             zy = y - s + int(t * 0.6) * s
             zy = y - int(t) * s // 2
             if 0 < zy < rows and zx < cols:
-                d.rectangle([zx, zy, zx + s - 1, zy + s - 1], fill=SP.PAL["W"])
+                d.rectangle([zx, zy, zx + s - 1, zy + s - 1], fill=PROPS.PAL["W"])
         out.append(im)
     return out
 
@@ -141,6 +162,7 @@ def render_opening(cols, rows, p=None):
     """
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
+    SP = _ch(q)
     n = artwork.frame_count(q, "opening")
 
     pose = SP.POSES["walk_a"]
@@ -151,7 +173,7 @@ def render_opening(cols, rows, p=None):
 
     # 終點那碗飯放在右邊 82% 處
     bowl_x = int(cols * 0.82)
-    bowl_y = rows - len(SP.BOWL) * s - max(1, s)
+    bowl_y = rows - len(PROPS.BOWL) * s - max(1, s)
 
     out = []
     for i in range(n):
@@ -160,7 +182,7 @@ def render_opening(cols, rows, p=None):
         d = ImageDraw.Draw(im)
 
         # 目標那碗飯，全程都在
-        _blit(d, SP.BOWL, bowl_x, bowl_y, s)
+        _blit_prop(d, PROPS.BOWL, bowl_x, bowl_y, s)
 
         # 飯粒路徑：一顆一顆亮起來，像遊戲關卡的路標
         walk_from, walk_to = 0.30, 0.88
@@ -168,29 +190,29 @@ def render_opening(cols, rows, p=None):
             gxp = int(cols * 0.10 + k * (bowl_x - cols * 0.10) / 12)
             lit = t > walk_from + (walk_to - walk_from) * (k / 12) - 0.04
             d.rectangle([gxp, gy + ph * s - s, gxp + s - 1, gy + ph * s - 1],
-                        fill=SP.PAL["W"] if lit else SP.PAL["B"])
+                        fill=PROPS.PAL["W"] if lit else PROPS.PAL["B"])
 
         if t < 0.18:
             # 第一拍：布簾往兩邊拉開
             k = t / 0.18
             w = int(cols / 2 * (1 - k))
-            d.rectangle([0, 0, w, rows], fill=SP.PAL["K"])
-            d.rectangle([cols - w, 0, cols, rows], fill=SP.PAL["K"])
+            d.rectangle([0, 0, w, rows], fill=PROPS.PAL["K"])
+            d.rectangle([cols - w, 0, cols, rows], fill=PROPS.PAL["K"])
         elif t < 0.30:
             # 第二拍：站在左邊伸懶腰（手舉起來，上下晃一下）
             k = (t - 0.18) / 0.12
             bob = -s if int(k * 6) % 2 else 0
-            _blit(d, SP.POSES["cheer"], int(cols * 0.08), gy + bob, s)
+            _blit(d, SP.POSES["cheer"], int(cols * 0.08), gy + bob, s, SP.PAL)
         elif t < 0.88:
             # 第三拍：走過去
             k = (t - 0.30) / 0.58
             x = int(cols * 0.08 + (bowl_x - sw - cols * 0.08) * k)
-            _blit(d, _walk_frame(i), x, gy, s)
+            _blit(d, _walk_frame(i, SP), x, gy, s, SP.PAL)
         else:
             # 第四拍：抵達，舉手歡呼
             k = (t - 0.88) / 0.12
             bob = -s if int(k * 8) % 2 else 0
-            _blit(d, SP.POSES["cheer"], bowl_x - sw, gy + bob, s)
+            _blit(d, SP.POSES["cheer"], bowl_x - sw, gy + bob, s, SP.PAL)
 
         out.append(im)
     return out
@@ -201,6 +223,7 @@ def render_evening(cols, rows, p=None):
     """今天辛苦了，吃飯吧：放下公事包，坐下拿起飯碗。"""
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
+    SP = _ch(q)
     n = artwork.frame_count(q, "evening")
 
     stand = SP.POSES["walk_a"]
@@ -222,29 +245,29 @@ def render_evening(cols, rows, p=None):
             # 走進來，手上拎著公事包
             k = t / 0.42
             x = int(-sw + (mid + sw) * k)
-            _blit(d, _walk_frame(i), x, gy, s)
+            _blit(d, _walk_frame(i, SP), x, gy, s, SP.PAL)
             d.rectangle([x + sw, gy + int(ph * 0.72) * s,
                          x + sw + bag_w, gy + int(ph * 0.72) * s + bag_h],
-                        fill=SP.PAL["K"])
+                        fill=PROPS.PAL["K"])
         else:
             # 包放地上，人坐下，碗端起來
             k = (t - 0.42) / 0.58
             d.rectangle([mid + sw, rows - bag_h - max(1, s),
-                         mid + sw + bag_w, rows - max(1, s)], fill=SP.PAL["K"])
+                         mid + sw + bag_w, rows - max(1, s)], fill=PROPS.PAL["K"])
             sit = SP.POSES["sit"]
             drop = int(min(1.0, k * 4) * 3) * s          # 坐下去的那一沉
             _blit(d, sit, mid, rows - len(sit) * s - max(1, s) + 0, s)
-            bx = mid - len(SP.BOWL[0]) * s
-            _blit(d, SP.BOWL, bx, rows - len(SP.BOWL) * s - max(1, s) - drop, s)
+            bx = mid - len(PROPS.BOWL[0]) * s
+            _blit_prop(d, PROPS.BOWL, bx, rows - len(PROPS.BOWL) * s - max(1, s) - drop, s)
             # 熱氣
             if k > 0.3:
                 for kk in range(2):
                     tt = (i * 0.4 + kk * 5) % 10
-                    yy = rows - len(SP.BOWL) * s - max(1, s) - drop - int(tt) * s
+                    yy = rows - len(PROPS.BOWL) * s - max(1, s) - drop - int(tt) * s
                     if yy > 0:
                         d.rectangle([bx + (kk + 1) * 2 * s, yy,
                                      bx + (kk + 1) * 2 * s + s - 1, yy + s - 1],
-                                    fill=SP.PAL["W"])
+                                    fill=PROPS.PAL["W"])
         out.append(im)
     return out
 

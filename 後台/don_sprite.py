@@ -66,6 +66,15 @@ LEGS_HOP = [
     "......SS....SS....",
     ".....KKKK..KKKK...",
 ]
+LEGS_TUCK = [                      # 睡覺時腳縮起來
+    "....KKKK....KKKK..",
+    "..................",
+]
+
+# 睡著的碗：眼睛變成兩條線
+BODY_SLEEP = [r for r in BOWL_BODY]
+BODY_SLEEP[7] = "KWWWWWWWWWWWWWWWWK"
+BODY_SLEEP[8] = "KWWKKWWWWWWWWKKWWK"
 
 
 def _compose(arm, legs):
@@ -100,6 +109,16 @@ POSES = {
     "cheer":  _compose(ARM_UP,    LEGS_HOP),
     "hold":   _compose(ARM_HOLD,  LEGS_WALK_A),
 }
+
+# 睡覺：換掉眼睛那兩列，腳縮起來
+_body = BOWL_BODY
+BOWL_BODY = BODY_SLEEP
+POSES["sleep"] = _compose(ARM_DOWN, LEGS_TUCK)
+BOWL_BODY = _body
+
+# 小飯碗用 sit 當睡姿，丼飯用 sleep。兩邊都給一個 sit 別名，
+# 渲染器才不用去記誰有哪個姿勢。
+POSES["sit"] = POSES["sleep"]
 
 
 def walk_frame(i, every=6):

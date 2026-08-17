@@ -75,6 +75,19 @@ p.note{color:var(--dim);max-width:640px}
 .card span{color:var(--dim);font-size:14px}
 .soon{opacity:.55}
 .soon b::after{content:" · 製作中";color:var(--dim2);font-weight:400;font-size:13px}
+/* ---------------------------------------------------------- 主角切換 */
+.pick{display:inline-flex;align-items:center;gap:8px;margin-top:26px;
+  background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:6px 8px 6px 16px}
+.pick-label{font-size:12.5px;letter-spacing:.1em;color:var(--dim);margin-right:4px}
+.pick-btn{cursor:pointer;border:0;border-radius:20px;padding:9px 20px;font-size:15px;
+  font-weight:700;background:transparent;color:var(--dim);
+  font-family:inherit;transition:background .15s,color .15s}
+.pick-btn:hover{color:var(--ink)}
+.pick-btn.on{background:linear-gradient(90deg,var(--org),var(--yel));color:#1a1008}
+.pick-note{color:var(--dim2);font-size:13.5px;margin-top:12px}
+.screen{transition:opacity .18s}
+.screen.swap{opacity:.25}
+
 footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
 @media(max-width:600px){
   header{padding:44px 0 30px}
@@ -93,11 +106,13 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       不是循環播放的廣告牌。開店、午餐、午後、晚餐 ——
       小飯碗在上面過完一整天，客人每次經過看到的都不一樣。
     </p>
-    <p style="margin-top:22px">
-      <a href="characters.html" style="display:inline-block;color:#1a1008;font-weight:700;
-        background:linear-gradient(90deg,var(--org),var(--yel));text-decoration:none;
-        padding:11px 22px;border-radius:24px;font-size:15px">
-        看兩個角色 →</a>
+    <div class="pick">
+      <span class="pick-label">主角</span>
+      <button class="pick-btn on" data-c="bowl" onclick="setChar('bowl')">小飯碗</button>
+      <button class="pick-btn" data-c="don" onclick="setChar('don')">丼飯</button>
+    </div>
+    <p class="pick-note" id="picknote">
+      同一套分鏡，換個主角看看。切換後下面四段會一起換。
     </p>
   </div>
 </header>
@@ -195,10 +210,53 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
 
 <footer>
   <div class="wrap">
+    <p style="margin-bottom:14px">
+      <a href="characters.html" style="color:var(--yel)">看兩個角色的全部姿勢 →</a>
+    </p>
     畫面為實際輸出檔，尺寸與比例同台南門市 960 × 120。<br>
     ON Design Lab
   </div>
 </footer>
+
+<script>
+/* 主角切換。
+   兩個版本是分別編出來的實際影片，不是網頁特效 —— 所以切過去看到的
+   就是那個角色真的上屏會長的樣子。
+   小飯碗是 xxx.mp4，丼飯是 xxx_don.mp4。 */
+const NOTE = {
+  bowl: '同一套分鏡，換個主角看看。切換後下面四段會一起換。',
+  don:  '丼飯版。碗本身就是主角，走路時碗緣的紅帶最好認 —— 遠看辨識度比較高。'
+};
+
+function setChar(c){
+  document.querySelectorAll('.pick-btn').forEach(b =>
+    b.classList.toggle('on', b.dataset.c === c));
+  document.getElementById('picknote').textContent = NOTE[c];
+
+  document.querySelectorAll('.screen').forEach(box => {
+    const v = box.querySelector('video');
+    if (!v) return;
+    const base = v.dataset.base || (v.dataset.base = v.getAttribute('src'));
+    const next = (c === 'bowl') ? base : base.replace('.mp4', '_don.mp4');
+    if (v.getAttribute('src') === next) return;
+
+    // 換檔的時候淡一下，不然畫面會硬跳
+    box.classList.add('swap');
+    v.src = next;
+    v.load();
+    v.play().catch(()=>{});
+    v.addEventListener('loadeddata', () => box.classList.remove('swap'), {once:true});
+    setTimeout(() => box.classList.remove('swap'), 900);   // 保險
+  });
+  try { localStorage.setItem('okawari_char', c); } catch(e) {}
+}
+
+// 記住上次看的是哪一個
+try {
+  const saved = localStorage.getItem('okawari_char');
+  if (saved === 'don') setChar('don');
+} catch(e) {}
+</script>
 
 </body>
 </html>
