@@ -23,6 +23,7 @@ OKAWARI 門頭屏 · 內容編譯器 v3（影片）
 import glob
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +40,7 @@ sys.path.insert(0, HERE)
 import hd_test as hd          # noqa: E402
 import hd_send as hs          # noqa: E402
 import artwork                # noqa: E402
+import schedule as sched      # noqa: E402
 
 
 # ---------------------------------------------------------------- ffmpeg
@@ -215,16 +217,39 @@ def build_store(store, data, log=print):
     return result
 
 
+def parse_files(xml):
+    """把 GetFiles 的回應拆成 [{name, md5, existSize, type, size}, ...]。
+
+    ★ 不能用「照順序」的正則去比對。卡回來的屬性順序不固定 ——
+      2026-08-17 實測是 existSize → name → md5 → type → size，
+      跟原本假設的 name → md5 → existSize 不一樣，結果每個檔都被判成
+      「卡上找不到」，明明檔案都上去了。發佈會整批靜悄悄地失敗。
+    """
+    out = []
+    for node in re.findall(r'<file\s([^>]*?)/?>', xml):
+        attrs = dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', node))
+        if attrs.get("name"):
+            out.append(attrs)
+    return out
+
+
+def card_file_info(card, name):
+    """問卡某個檔案的狀態。沒有就回 None。"""
+    for f in parse_files(card.call('  <in method="GetFiles"/>')):
+        if f["name"] == name:
+            return f
+    return None
+
+
 def clean_media(card, keep, log=print):
     """把卡上用不到的圖檔與影片刪掉。
 
     每次發佈都送新檔卻不清舊檔的話，卡上的檔案會一直累積，
     最後 AddProgram 會回 kDownloadingFile → kDownloadFileFailed。
     """
-    import re
-    xml = card.call('  <in method="GetFiles"/>')
-    files = re.findall(r'<file name="([^"]+)" type="([^"]+)"', xml)
-    dead = [n for n, t in files if t in ("image", "video") and n not in keep]
+    files = parse_files(card.call('  <in method="GetFiles"/>'))
+    dead = [f["name"] for f in files
+            if f.get("type") in ("image", "video") and f["name"] not in keep]
     if not dead:
         return 0
     for i in range(0, len(dead), 40):
@@ -239,7 +264,18 @@ def publish_store(card, store, built, data, log=print):
     """送檔 + 建節目。回傳 {key: {program, area, seconds, file}}。"""
     _, _, ow, oh, _ = resolve_canvas(store, data)
     prm = merged_params(store, data)
+    by_key = {c["key"]: c for c in store.get("contents", [])}
     guids = {}
+
+    # 先把卡上舊的節目全部刪掉，再重建。
+    #
+    # 不清的話每發佈一次就多一批 —— 舊節目的檔案雖然被 clean_media 刪了，
+    # 節目本身還在，而且沒有時段限制，會混進日常輪播。
+    # 2026-08-17 實測踩到：卡上累積了 10 個節目，其中兩個沒有時段的「續碗」
+    # 會自己跳出來播，客人根本沒續碗。
+    n = wipe_programs(card, log)
+    if n:
+        log("  清掉卡上 %d 個舊節目" % n)
 
     clean_media(card, {os.path.basename(p) for p in built.values()}, log)
 
@@ -250,19 +286,13 @@ def publish_store(card, store, built, data, log=print):
         # 對一次 md5。壞檔要當場抓出來，不要等到看見黑屏才知道。
         with open(path, "rb") as f:
             want = hashlib.md5(f.read()).hexdigest().lower()
-        import re
-        got = ""
-        xml = card.call('  <in method="GetFiles"/>')
-        m = re.search(r'<file name="%s"[^>]*md5="([^"]*)"[^>]*existSize="(\d+)"'
-                      % re.escape(name), xml)
-        if m:
-            got, exist = m.group(1).lower(), int(m.group(2))
-            if got != want or exist != os.path.getsize(path):
-                log("    ✗ 卡上的 %s 對不起來（md5 %s vs %s），跳過"
-                    % (name, got[:8], want[:8]))
-                continue
-        else:
+        got = card_file_info(card, name)
+        if not got:
             log("    ✗ 卡上找不到 %s，跳過" % name)
+            continue
+        if got.get("md5", "").lower() != want or int(got.get("existSize", -1)) != os.path.getsize(path):
+            log("    ✗ 卡上的 %s 對不起來（md5 %s vs %s），跳過"
+                % (name, got.get("md5", "")[:8], want[:8]))
             continue
 
         secs = prm["%s_seconds" % artwork.param_key(key)]
@@ -270,16 +300,26 @@ def publish_store(card, store, built, data, log=print):
             % (store["id"], key, name, os.path.getsize(path) / 1024, secs))
 
         # 一個區域只有一個影片資源，卡自己播，不會反覆銷毀重建區域。
+        #
+        # playControl 帶排播條件（時段／日期／星期），卡就會自己按時鐘換節目，
+        # 不需要後台在線上輪詢。開幕活動設了日期還會自己過期。
+        # 條件寫在 stores.json 的 contents[].when，見 schedule.py。
+        item = by_key.get(artwork.param_key(key)) or by_key.get(key) or {}
+        pc = sched.play_control_xml(item)
+        if item.get("when") or item.get("trigger") == "manual":
+            log("    排播：%s" % pc.replace('<playControl count="1">', '')
+                                   .replace('</playControl>', '').replace('/>', '/> '))
+
         pg, ag = hs.new_guid(), hs.new_guid()
         screen = (
             '    <screen width="%d" height="%d">'
-            '<program guid="%s" type="normal"><playControl count="1"/>'
+            '<program guid="%s" type="normal">%s'
             '<area guid="%s" alpha="255">'
             '<rectangle x="0" y="0" width="%d" height="%d"/>'
             '<resources><video guid="%s" aspectRatio="false">'
             '<file name="%s"/></video></resources>'
             '</area></program></screen>'
-            % (ow, oh, pg, ag, ow, oh, hs.new_guid(), name)
+            % (ow, oh, pg, pc, ag, ow, oh, hs.new_guid(), name)
         )
 
         result = ""
