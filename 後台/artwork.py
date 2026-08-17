@@ -131,6 +131,13 @@ DEFAULT_PARAMS = {
     "gradient_window": 0.72,  # 漸變一次用掉多少色階，越小顏色跨度越窄
     "dither": 0.22,          # 顆粒強度，0 就是完全乾淨的漸層
     "hero_scale": 0.72,      # 角色佔畫面高度的比例
+
+    # 小飯碗的四段常駐（業主 2026-08-09 需求）。時段本身寫在 stores.json 的 when，
+    # 這裡只管每一段多長、多流暢。
+    "noon_seconds": 16, "noon_fps": 25,
+    "siesta_seconds": 20, "siesta_fps": 12,     # 睡覺不用高幀率
+    "opening_seconds": 14, "opening_fps": 25,
+    "evening_seconds": 16, "evening_fps": 25,
 }
 
 
@@ -411,3 +418,13 @@ VARIANTS = {"okawari": ["okawari", "okawari_miss"]}
 def param_key(key):
     """okawari_miss 的秒數／幀率設定跟 okawari 共用。"""
     return "okawari" if key.startswith("okawari") else key
+
+
+# ---------------------------------------------------------------- 小飯碗
+# 2026-08-17 業主確認主角改成小飯碗，勇者與壞人停用。
+# 舊的 render_patrol / render_okawari 先留著，續碗還在用。
+try:
+    import bowl_art
+    RENDERERS.update(bowl_art.RENDERERS)
+except Exception as _e:          # 美術還沒到位時不要讓整個後台起不來
+    print("小飯碗美術載入失敗，先跳過：%r" % (_e,))

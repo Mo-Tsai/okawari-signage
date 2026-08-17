@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OKAWARI 門頭屏 · 動態提案</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e23a2e'/><rect x='5' y='12' width='22' height='8' rx='2' fill='%23f7b32b'/></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#141010; --panel:#1e1816; --line:#3a2e28; --ink:#f6efe8;
+  --dim:#a2938a; --dim2:#6f625b;
+  --red:#e23a2e; --org:#f07818; --yel:#f7b32b;
+}
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  -webkit-font-smoothing:antialiased; padding-bottom:80px;
+}
+.wrap{max-width:1000px;margin:0 auto;padding:0 22px}
+
+/* ---------------------------------------------------------- 開頭 */
+header{padding:64px 0 40px;text-align:center;border-bottom:1px solid var(--line)}
+.brand{display:inline-flex;align-items:center;gap:11px;font-size:14px;
+  letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-bottom:20px}
+.brand i{width:30px;height:11px;border-radius:3px;
+  background:linear-gradient(90deg,var(--red),var(--yel));display:block}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.25;font-weight:800;letter-spacing:-.01em}
+h1 em{font-style:normal;
+  background:linear-gradient(90deg,var(--red),var(--org) 55%,var(--yel));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--dim);margin:18px auto 0;max-width:620px;font-size:17px}
+
+/* ---------------------------------------------------------- 區塊 */
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+h2{font-size:13px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;
+  margin-bottom:8px;font-weight:600}
+h3{font-size:24px;font-weight:700;margin-bottom:10px}
+p.note{color:var(--dim);max-width:640px}
+
+/* ---------------------------------------------------------- 屏 */
+.screen{
+  margin:22px 0 0; border-radius:10px; overflow:hidden;
+  border:1px solid var(--line); background:#000;
+  box-shadow:0 20px 50px #0008;
+}
+.screen video{display:block;width:100%;height:auto;image-rendering:pixelated}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{font-size:12.5px;color:var(--dim);border:1px solid var(--line);
+  border-radius:20px;padding:3px 11px;font-variant-numeric:tabular-nums}
+.tag.hot{color:var(--yel);border-color:#5a4420}
+
+.seg{margin-bottom:52px}
+.seg:last-child{margin-bottom:0}
+.seg .when{display:inline-block;font-variant-numeric:tabular-nums;
+  font-size:13px;letter-spacing:.04em;color:#1a1008;font-weight:700;
+  background:linear-gradient(90deg,var(--org),var(--yel));
+  padding:3px 12px;border-radius:20px;margin-bottom:12px}
+
+/* ---------------------------------------------------------- 時間軸 */
+.timeline{margin-top:26px;border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;background:var(--panel)}
+.bar{display:flex;height:44px}
+.bar div{display:flex;align-items:center;justify-content:center;
+  font-size:12.5px;font-weight:600;color:#1a1008;white-space:nowrap;overflow:hidden}
+.scale{display:flex;font-size:11px;color:var(--dim2);
+  font-variant-numeric:tabular-nums;padding:6px 0;border-top:1px solid var(--line)}
+.scale div{flex:1;text-align:center}
+
+/* ---------------------------------------------------------- 其他 */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.card b{display:block;margin-bottom:6px;font-size:16px}
+.card span{color:var(--dim);font-size:14px}
+.soon{opacity:.55}
+.soon b::after{content:" · 製作中";color:var(--dim2);font-weight:400;font-size:13px}
+footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
+@media(max-width:600px){
+  header{padding:44px 0 30px}
+  section{padding:40px 0}
+  .bar div{font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><i></i>OKAWARI 門頭屏</div>
+    <h1>門口那面屏，<br>會<em>跟著一天</em>改變。</h1>
+    <p class="lede">
+      不是循環播放的廣告牌。開店、午餐、午後、晚餐 ——
+      小飯碗在上面過完一整天，客人每次經過看到的都不一樣。
+    </p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>一天的節奏</h2>
+    <h3>四段常駐畫面</h3>
+    <p class="note">
+      屏會自己看時鐘換畫面，不需要有人操作。營業時間 11:00–22:30，
+      打烊之後自動關屏。
+    </p>
+
+    <div class="timeline">
+      <div class="bar">
+        <div style="flex:30;background:linear-gradient(90deg,#e23a2e,#e8532e)">開店</div>
+        <div style="flex:150;background:linear-gradient(90deg,#e8532e,#f07818)">中午</div>
+        <div style="flex:210;background:linear-gradient(90deg,#f07818,#f7b32b)">午後</div>
+        <div style="flex:300;background:linear-gradient(90deg,#f7b32b,#e8a33a)">晚間</div>
+      </div>
+      <div class="scale">
+        <div>11:00</div><div>13:00</div><div>15:00</div>
+        <div>17:00</div><div>19:00</div><div>21:00</div><div>22:30</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+
+    <div class="seg">
+      <span class="when">11:00 – 11:30　開店</span>
+      <h3>布簾拉開，新的一天</h3>
+      <p class="note">小飯碗睡醒伸個懶腰，沿著一路亮起來的飯粒走過去，
+         走到那碗飯前面舉手歡呼。像 8-bit 遊戲的開場。</p>
+      <div class="screen"><video src="preview/opening.mp4" autoplay loop muted playsinline></video></div>
+      <div class="meta"><span class="tag">14 秒</span><span class="tag">25 fps</span><span class="tag">960 × 120</span></div>
+    </div>
+
+    <div class="seg">
+      <span class="when">11:30 – 14:00　中午</span>
+      <h3>今天也要好好吃飯</h3>
+      <p class="note">端著剛盛好的飯慢慢走過，熱氣一直往上冒。
+         午餐尖峰時段，畫面保持溫熱、不吵。</p>
+      <div class="screen"><video src="preview/noon.mp4" autoplay loop muted playsinline></video></div>
+      <div class="meta"><span class="tag">16 秒</span><span class="tag">25 fps</span><span class="tag hot">熱氣動畫</span></div>
+    </div>
+
+    <div class="seg">
+      <span class="when">14:00 – 17:30　午後</span>
+      <h3>午後發呆 Zzz…</h3>
+      <p class="note">沒什麼客人的時段，小飯碗乾脆躺在飯上睡著了，
+         偶爾翻個身。這一段刻意放慢，讓店裡安靜下來。</p>
+      <div class="screen"><video src="preview/siesta.mp4" autoplay loop muted playsinline></video></div>
+      <div class="meta"><span class="tag">20 秒</span><span class="tag">12 fps</span><span class="tag">節奏最慢</span></div>
+    </div>
+
+    <div class="seg">
+      <span class="when">17:30 – 22:30　晚間</span>
+      <h3>今天辛苦了，吃飯吧</h3>
+      <p class="note">下班時間。放下公事包、坐下來、把飯端起來。
+         給的是「可以休息了」這件事，不是促銷。</p>
+      <div class="screen"><video src="preview/evening.mp4" autoplay loop muted playsinline></video></div>
+      <div class="meta"><span class="tag">16 秒</span><span class="tag">25 fps</span></div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>接下來</h2>
+    <h3>互動與開幕活動</h3>
+    <p class="note">
+      同一套系統再往上疊。活動只要設好日期，時間到了自己上、
+      過了自己下 —— 不需要有人記得回去關掉。
+    </p>
+    <div class="grid">
+      <div class="card soon"><b>續碗 COMBO</b>
+        <span>多人同時續碗，三碗飯依序「碰碰碰」落下，最後全螢幕震一下出現 COMBO</span></div>
+      <div class="card soon"><b>消費滿額</b>
+        <span>稀有金飯碗登場，閃亮版角色跳舞，周圍撒星星與紙花</span></div>
+      <div class="card soon"><b>整點隱藏彩蛋</b>
+        <span>小飯碗拿手電筒巡邏，偷偷確認還有沒有人</span></div>
+      <div class="card soon"><b>9/1–2 買一送一</b>
+        <span>一碗丼飯出現 →「+1」→ 第二碗滑進來「BUY 1 GET 1」</span></div>
+      <div class="card soon"><b>溫泉蛋加價購</b>
+        <span>把蛋打進飯碗裡 → 10 元升級</span></div>
+      <div class="card soon"><b>開幕：飯迎光臨</b>
+        <span>角色從左右跑進來，紙花噴一下「飯迎光臨 OKAWARI START！」</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    畫面為實際輸出檔，尺寸與比例同台南門市 960 × 120。<br>
+    ON Design Lab
+  </div>
+</footer>
+
+</body>
+</html>
