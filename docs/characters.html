@@ -74,7 +74,7 @@ footer{padding:34px 0;text-align:center;color:var(--dim2);font-size:13px;
   <div class="brand"><i></i>OKAWARI 門頭屏</div>
   <h1>兩個角色</h1>
   <p class="lede">
-    小飯碗負責過完一整天，丼飯在客人做了什麼的時候才出場。
+    人物負責過完一整天，小飯碗在客人做了什麼的時候才出場。
     下面可以切換著看，畫面比例就是台南門市的 960 × 120。
   </p>
 </div></header>
@@ -153,10 +153,10 @@ function drawSprite(g, spr, pal, ox, oy, s){
     }}
 }
 
-let DATA=null, cur='bowl', playing=true, speed=1, t0=0, raf=null;
+let DATA=null, cur='person', playing=true, speed=1, t0=0, raf=null;
 
 fetch('preview/sprites.json').then(r=>r.json()).then(d=>{
-  DATA=d; buildTabs(); pick('bowl'); loop(0);
+  DATA=d; buildTabs(); pick('person'); loop(0);
 }).catch(e=>{ $('info').textContent='角色資料載入失敗：'+e.message; });
 
 function buildTabs(){
@@ -179,7 +179,7 @@ function pick(k){
 
   /* 姿勢表 */
   const LABEL={stand:'站', walk_a:'走 A', walk_b:'走 B',
-               cheer:'歡呼', hold:'端東西', sit:'坐下'};
+               cheer:'歡呼', hold:'端東西', sit:'坐下', sleep:'睡覺'};
   $('poses').innerHTML=Object.keys(v.poses).map(p=>
     `<div class="pose"><canvas data-p="${p}"></canvas><span>${LABEL[p]||p}</span></div>`).join('');
   document.querySelectorAll('.pose canvas').forEach(c=>{

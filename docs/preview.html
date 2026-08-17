@@ -104,12 +104,12 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
     <h1>門口那面屏，<br>會<em>跟著一天</em>改變。</h1>
     <p class="lede">
       不是循環播放的廣告牌。開店、午餐、午後、晚餐 ——
-      小飯碗在上面過完一整天，客人每次經過看到的都不一樣。
+      主角在上面過完一整天，客人每次經過看到的都不一樣。
     </p>
     <div class="pick">
       <span class="pick-label">主角</span>
-      <button class="pick-btn on" data-c="bowl" onclick="setChar('bowl')">小飯碗</button>
-      <button class="pick-btn" data-c="don" onclick="setChar('don')">丼飯</button>
+      <button class="pick-btn on" data-c="person" onclick="setChar('person')">人物</button>
+      <button class="pick-btn" data-c="ricebowl" onclick="setChar('ricebowl')">小飯碗</button>
     </div>
     <p class="pick-note" id="picknote">
       同一套分鏡，換個主角看看。切換後下面四段會一起換。
@@ -147,9 +147,9 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
     <div class="seg">
       <span class="when">11:00 – 11:30　開店</span>
       <h3>布簾拉開，新的一天</h3>
-      <p class="note">小飯碗睡醒伸個懶腰，沿著一路亮起來的飯粒走過去，
+      <p class="note">主角睡醒伸個懶腰，沿著一路亮起來的飯粒走過去，
          走到那碗飯前面舉手歡呼。像 8-bit 遊戲的開場。</p>
-      <div class="screen"><video src="preview/opening.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/opening_person.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">14 秒</span><span class="tag">25 fps</span><span class="tag">960 × 120</span></div>
     </div>
 
@@ -158,16 +158,16 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <h3>今天也要好好吃飯</h3>
       <p class="note">端著剛盛好的飯慢慢走過，熱氣一直往上冒。
          午餐尖峰時段，畫面保持溫熱、不吵。</p>
-      <div class="screen"><video src="preview/noon.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/noon_person.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">16 秒</span><span class="tag">25 fps</span><span class="tag hot">熱氣動畫</span></div>
     </div>
 
     <div class="seg">
       <span class="when">14:00 – 17:30　午後</span>
       <h3>午後發呆 Zzz…</h3>
-      <p class="note">沒什麼客人的時段，小飯碗乾脆躺在飯上睡著了，
+      <p class="note">沒什麼客人的時段，主角乾脆躺在飯上睡著了，
          偶爾翻個身。這一段刻意放慢，讓店裡安靜下來。</p>
-      <div class="screen"><video src="preview/siesta.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/siesta_person.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">20 秒</span><span class="tag">12 fps</span><span class="tag">節奏最慢</span></div>
     </div>
 
@@ -176,7 +176,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <h3>今天辛苦了，吃飯吧</h3>
       <p class="note">下班時間。放下公事包、坐下來、把飯端起來。
          給的是「可以休息了」這件事，不是促銷。</p>
-      <div class="screen"><video src="preview/evening.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/evening_person.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">16 秒</span><span class="tag">25 fps</span></div>
     </div>
 
@@ -197,7 +197,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <div class="card soon"><b>消費滿額</b>
         <span>稀有金飯碗登場，閃亮版角色跳舞，周圍撒星星與紙花</span></div>
       <div class="card soon"><b>整點隱藏彩蛋</b>
-        <span>小飯碗拿手電筒巡邏，偷偷確認還有沒有人</span></div>
+        <span>主角拿手電筒巡邏，偷偷確認還有沒有人</span></div>
       <div class="card soon"><b>9/1–2 買一送一</b>
         <span>一碗丼飯出現 →「+1」→ 第二碗滑進來「BUY 1 GET 1」</span></div>
       <div class="card soon"><b>溫泉蛋加價購</b>
@@ -222,10 +222,10 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
 /* 主角切換。
    兩個版本是分別編出來的實際影片，不是網頁特效 —— 所以切過去看到的
    就是那個角色真的上屏會長的樣子。
-   小飯碗是 xxx.mp4，丼飯是 xxx_don.mp4。 */
+   檔名：xxx_person.mp4 ／ xxx_ricebowl.mp4 */
 const NOTE = {
-  bowl: '同一套分鏡，換個主角看看。切換後下面四段會一起換。',
-  don:  '丼飯版。碗本身就是主角，走路時碗緣的紅帶最好認 —— 遠看辨識度比較高。'
+  person:   '同一套分鏡，換個主角看看。切換後下面四段會一起換。',
+  ricebowl: '小飯碗版。碗本身就是主角，走路時碗緣的紅帶最好認 —— 遠看辨識度比較高。'
 };
 
 function setChar(c){
@@ -236,8 +236,10 @@ function setChar(c){
   document.querySelectorAll('.screen').forEach(box => {
     const v = box.querySelector('video');
     if (!v) return;
-    const base = v.dataset.base || (v.dataset.base = v.getAttribute('src'));
-    const next = (c === 'bowl') ? base : base.replace('.mp4', '_don.mp4');
+    // 檔名長這樣：opening_person.mp4 / opening_ricebowl.mp4
+    const stem = v.dataset.stem ||
+      (v.dataset.stem = v.getAttribute('src').replace(/_(person|ricebowl)\.mp4$/, ''));
+    const next = stem + '_' + c + '.mp4';
     if (v.getAttribute('src') === next) return;
 
     // 換檔的時候淡一下，不然畫面會硬跳
@@ -254,7 +256,7 @@ function setChar(c){
 // 記住上次看的是哪一個
 try {
   const saved = localStorage.getItem('okawari_char');
-  if (saved === 'don') setChar('don');
+  if (saved === 'ricebowl') setChar('ricebowl');
 } catch(e) {}
 </script>
 

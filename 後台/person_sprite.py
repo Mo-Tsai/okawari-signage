@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""小飯碗 sprite：從業主 IG 的像素圖抽出來，再把糊掉的地方修乾淨。
+"""人物 sprite：從業主 IG 的像素圖抽出來，再把糊掉的地方修乾淨。
+
+★ 這個是「人物」（戴紅帽的小孩）。
+  「小飯碗」是另一支 ricebowl_sprite.py —— 那碗長出手腳的牛丼。
+  兩邊名字很容易搞反，動之前先確認。
 
 原圖 行銷資料夾/小勇者形象/Screenshot 2026-08-17 142303.png
 抽法：像素格 4px、每格取眾數色、收斂成 5 色。
@@ -128,4 +132,4 @@ POSES = {
     "sit":    compose(ARM_HOLD,  LEGS_SIT),
 }
 
-POSES["sleep"] = POSES["sit"]      # 兩個角色的姿勢名稱要一致
+POSES["sleep"] = POSES["sit"]      # 兩個角色的姿勢名稱要一致（人物／小飯碗）

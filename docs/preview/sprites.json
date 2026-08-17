@@ -1,7 +1,7 @@
 {
- "bowl": {
-  "name": "小飯碗",
-  "desc": "常駐四段的主角。從業主 IG 的像素圖直接抽出來的。",
+ "person": {
+  "name": "人物",
+  "desc": "戴紅帽的小孩，從業主 IG 的像素圖直接抽出來的。",
   "pal": {
    "H": "#a9421b",
    "K": "#1a1721",
@@ -163,7 +163,7 @@
     ".....SSSS..SSS....",
     "....KKKKK...KKKK.."
    ],
-   "sit": [
+   "sleep": [
     "..HHHHHHHHHHHHHH..",
     "..HHHHHHHHHHHHHH..",
     ".HHHHHHHHHHHHHHHH.",
@@ -200,9 +200,9 @@
   ],
   "walk_every": 6
  },
- "don": {
-  "name": "丼飯",
-  "desc": "互動與活動時出場。長出手腳的牛丼，碗身上兩顆眼睛。",
+ "ricebowl": {
+  "name": "小飯碗",
+  "desc": "長出手腳的牛丼，碗身上兩顆眼睛。",
   "pal": {
    "K": "#1a1721",
    "W": "#fffdf6",
@@ -297,6 +297,23 @@
     ".....KKKKKKKKKKKK.....",
     ".......SS......SS.....",
     ".....KKKK.....KKKK...."
+   ],
+   "sleep": [
+    ".......MMMMMMMM.......",
+    ".....MMNMMMMNMMMM.....",
+    "....MMMMMNMMMMNMMMM...",
+    "....WWWWWWWWWWWWWWW...",
+    "...KKKKKKKKKKKKKKKK...",
+    "..KRRRRRRRRRRRRRRRRK..",
+    "..KWWWWWWWWWWWWWWWWK..",
+    "SSKWWWWWWWWWWWWWWWWKSS",
+    "SSKWWKKWWWWWWWWKKWWKSS",
+    ".SKWWWWWWWKKWWWWWWWKS.",
+    "...KWWWWWWWWWWWWWWK...",
+    "....KWWWWWWWWWWWWK....",
+    ".....KKKKKKKKKKKK.....",
+    "......KKKK....KKKK....",
+    "......................"
    ]
   },
   "walk": [
@@ -307,7 +324,7 @@
  },
  "gold": {
   "name": "金飯碗",
-  "desc": "消費滿額時登場的稀有版本。同一隻丼飯換配色。",
+  "desc": "消費滿額時登場的稀有版本。同一隻小飯碗換配色。",
   "pal": {
    "K": "#1a1721",
    "W": "#f7d34b",
@@ -402,6 +419,23 @@
     ".....KKKKKKKKKKKK.....",
     ".......SS......SS.....",
     ".....KKKK.....KKKK...."
+   ],
+   "sleep": [
+    ".......MMMMMMMM.......",
+    ".....MMNMMMMNMMMM.....",
+    "....MMMMMNMMMMNMMMM...",
+    "....WWWWWWWWWWWWWWW...",
+    "...KKKKKKKKKKKKKKKK...",
+    "..KRRRRRRRRRRRRRRRRK..",
+    "..KWWWWWWWWWWWWWWWWK..",
+    "SSKWWWWWWWWWWWWWWWWKSS",
+    "SSKWWKKWWWWWWWWKKWWKSS",
+    ".SKWWWWWWWKKWWWWWWWKS.",
+    "...KWWWWWWWWWWWWWWK...",
+    "....KWWWWWWWWWWWWK....",
+    ".....KKKKKKKKKKKK.....",
+    "......KKKK....KKKK....",
+    "......................"
    ]
   },
   "walk": [

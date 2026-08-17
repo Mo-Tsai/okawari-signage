@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-OKAWARI 門頭屏 · 小飯碗的四段常駐畫面
+OKAWARI 門頭屏 · 四段常駐畫面
 
 業主 2026-08-09 需求：畫面按時段換。
-角色 sprite 在 bowl_sprite.py，是從業主 IG 的像素圖直接抽出來的。
+兩個角色：
+    人物     person_sprite.py    戴紅帽的小孩，從業主 IG 的像素圖抽出來
+    小飯碗   ricebowl_sprite.py  長出手腳的牛丼
 
     開店 11:00-11:30   布簾打開，睡醒伸懶腰，沿飯粒路徑走到一碗飯
     中午 11:30-14:00   端著熱騰騰的飯慢慢走過，冒 3 個蒸氣符號
@@ -18,26 +20,26 @@ playControl，由卡自己按時鐘播。這裡只負責畫。
 from PIL import ImageDraw
 
 import artwork
-import bowl_sprite
-import don_sprite
+import person_sprite
+import ricebowl_sprite
 
 # 主角是可以換的。stores.json 的 params.character 決定編出來是誰主演，
 # 分鏡完全一樣 —— 業主要比較兩個角色時，比的才是角色本身，不是分鏡。
 CHARACTERS = {
-    "bowl": bowl_sprite,     # 小飯碗（IG 那個像素小孩）
-    "don":  don_sprite,      # 丼飯（長手腳的牛丼）
+    "person":   person_sprite,      # 人物（IG 那個戴紅帽的小孩）
+    "ricebowl": ricebowl_sprite,    # 小飯碗（長出手腳的牛丼）
 }
-SP = bowl_sprite             # 預設，_ch() 會覆寫
-PROPS = bowl_sprite          # 碗、蒸氣這些道具不屬於任何角色，兩邊共用
+SP = person_sprite           # 預設，_ch() 會覆寫
+PROPS = person_sprite        # 碗、蒸氣這些道具不屬於任何角色，兩邊共用
 
 
 def _ch(p):
-    return CHARACTERS.get(str((p or {}).get("character", "bowl")), bowl_sprite)
+    return CHARACTERS.get(str((p or {}).get("character", "person")), person_sprite)
 
 
 def _blit(d, spr, ox, oy, s, pal=None, flip=False):
     """把 sprite 畫上去。s 是每格幾個像素。"""
-    pal = pal or bowl_sprite.PAL
+    pal = pal or person_sprite.PAL
     w = max(len(r) for r in spr)
     for sy, row in enumerate(spr):
         for sx, ch in enumerate(row):
@@ -60,7 +62,7 @@ def _scale(rows, canvas_h, p):
 
 def _walk_frame(i, SP=None):
     """走路兩幀交替。每 6 格換一次腳，跟模擬器的節奏一樣。"""
-    SP = SP or bowl_sprite
+    SP = SP or person_sprite
     return SP.POSES["walk_a"] if (i // 6) % 2 == 0 else SP.POSES["walk_b"]
 
 

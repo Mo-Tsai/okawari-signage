@@ -420,11 +420,11 @@ def param_key(key):
     return "okawari" if key.startswith("okawari") else key
 
 
-# ---------------------------------------------------------------- 小飯碗
-# 2026-08-17 業主確認主角改成小飯碗，勇者與壞人停用。
+# ---------------------------------------------------------------- 新角色
+# 2026-08-17 業主確認：主角是人物或小飯碗（兩案並陳），勇者與壞人停用。
 # 舊的 render_patrol / render_okawari 先留著，續碗還在用。
 try:
-    import bowl_art
-    RENDERERS.update(bowl_art.RENDERERS)
+    import segment_art
+    RENDERERS.update(segment_art.RENDERERS)
 except Exception as _e:          # 美術還沒到位時不要讓整個後台起不來
-    print("小飯碗美術載入失敗，先跳過：%r" % (_e,))
+    print("角色美術載入失敗，先跳過：%r" % (_e,))
