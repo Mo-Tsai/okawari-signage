@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OKAWARI 門頭屏 · 控制台</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e23a2e'/><rect x='5' y='12' width='22' height='8' rx='2' fill='%23f7b32b'/></svg>">
+<style>
+/* ------------------------------------------------------------------ 基礎 */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#14100e; --panel:#1e1814; --panel2:#261e19; --line:#3a2e25;
+  --ink:#f4ece4; --dim:#9b8b7d; --dim2:#6f6259;
+  --red:#e23a2e; --org:#f07818; --yel:#f7b32b;
+  --ok:#6ed36e; --bad:#ff7a5c; --warn:#f7b32b;
+  --r:12px;
+}
+body{
+  background:var(--bg); color:var(--ink);
+  font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  -webkit-font-smoothing:antialiased; padding-bottom:60px;
+}
+a{color:var(--yel)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+::selection{background:var(--org);color:#1a1008}
+
+/* ------------------------------------------------------------------ 版面 */
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+header{
+  border-bottom:1px solid var(--line); background:#181310;
+  position:sticky; top:0; z-index:50;
+  backdrop-filter:blur(8px);
+}
+.hbar{display:flex;align-items:center;gap:14px;padding:12px 0;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.02em}
+.logo i{width:26px;height:12px;border-radius:3px;
+  background:linear-gradient(90deg,var(--red),var(--yel));display:block}
+.spacer{flex:1}
+.conn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--dim);
+  border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:var(--panel)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim2);flex:none}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.dot.off{background:var(--bad)}
+.dot.wait{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+main{display:grid;grid-template-columns:270px 1fr;gap:22px;padding-top:22px;align-items:start}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;margin-bottom:16px}
+.panel h2{font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:12px}
+.hint{color:var(--dim);font-size:13px;line-height:1.6}
+.hint+.hint{margin-top:6px}
+
+/* ------------------------------------------------------------------ 門店清單 */
+.storeitem{display:block;width:100%;text-align:left;padding:11px 12px;border-radius:9px;
+  border:1px solid transparent;margin-bottom:6px;transition:background .12s}
+.storeitem:hover{background:var(--panel2)}
+.storeitem.sel{background:var(--panel2);border-color:var(--org)}
+.storeitem b{display:block;font-size:15px;font-weight:600}
+.storeitem span{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.storeitem .st{float:right;margin-top:5px}
+
+/* ------------------------------------------------------------------ 內容卡 */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.feat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;display:flex;flex-direction:column}
+.feat h3{font-size:17px;margin-bottom:3px}
+.feat .desc{color:var(--dim);font-size:13px;margin-bottom:14px;flex:1}
+.trigger{width:100%;padding:16px;border-radius:10px;font-size:16px;font-weight:700;
+  background:linear-gradient(96deg,var(--red),var(--org) 55%,var(--yel));color:#1a1008;
+  transition:filter .12s,transform .06s}
+.trigger:hover{filter:brightness(1.1)}
+.trigger:active{transform:translateY(1px)}
+.trigger[disabled]{background:var(--panel2);color:var(--dim2);cursor:not-allowed;filter:none}
+
+/* ------------------------------------------------------------------ 按鈕 */
+.btn{padding:10px 16px;border-radius:9px;background:var(--panel2);
+  border:1px solid var(--line);font-size:14px;font-weight:600;transition:background .12s}
+.btn:hover{background:#33291f}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--org);border-color:var(--org);color:#1a1008}
+.btn.primary:hover{background:var(--yel)}
+.btn.sm{padding:6px 11px;font-size:13px;font-weight:500}
+.btn.danger:hover{background:#4a2320;border-color:var(--bad);color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>.grow{flex:1}
+
+/* ------------------------------------------------------------------ 表單 */
+label{display:block;font-size:12px;color:var(--dim);margin:12px 0 4px}
+input,select{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);
+  background:#171310;font-size:14px}
+input:focus,select:focus{outline:0;border-color:var(--org)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+
+/* ------------------------------------------------------------------ 預覽 */
+.screen{width:100%;background:#000;border-radius:6px;border:1px solid var(--line);
+  image-rendering:pixelated;display:block}
+.ruler{display:flex;justify-content:space-between;font-size:11px;color:var(--dim2);
+  font-variant-numeric:tabular-nums;margin-top:5px}
+
+/* ------------------------------------------------------------------ 其他 */
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  margin:0 4px 4px 0;font-variant-numeric:tabular-nums}
+.tag.ok{color:var(--ok);border-color:#2d4a2d}
+.tag.bad{color:var(--bad);border-color:#4a2b23}
+.tag.click{cursor:pointer}
+.tag.click:hover{border-color:var(--org)}
+.tag.off{opacity:.35}
+#log{font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#8f8378;
+  white-space:pre-wrap;max-height:230px;overflow:auto;word-break:break-all}
+details summary{cursor:pointer;color:var(--dim);font-size:13px;padding:5px 0;
+  list-style:none;user-select:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+details[open] summary::before{content:"▾ "}
+.sep{height:1px;background:var(--line);margin:14px 0}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:200;
+  background:#2b211a;border:1px solid var(--line);border-radius:10px;padding:12px 20px;
+  font-size:14px;box-shadow:0 8px 28px #0009;max-width:90vw}
+.toast.bad{border-color:var(--bad);color:var(--bad)}
+.toast.ok{border-color:#2d4a2d}
+.banner{background:#2a1f16;border:1px solid var(--warn);border-radius:var(--r);
+  padding:14px 16px;margin-bottom:16px;font-size:14px;color:#f0dcc0}
+.banner b{color:var(--yel)}
+</style>
+</head>
+<body>
+
+<header>
+ <div class="wrap hbar">
+  <div class="logo"><i></i>OKAWARI 門頭屏</div>
+  <div class="spacer"></div>
+  <div class="conn"><span class="dot wait" id="dot"></span><span id="connlabel">連線中…</span></div>
+  <button class="btn sm" onclick="toggleSettings()">連線設定</button>
+ </div>
+</header>
+
+<div class="wrap">
+
+<div id="settings" class="panel" style="display:none;margin-top:16px">
+  <h2>後台位置</h2>
+  <p class="hint">這個頁面本身只是介面，真正跟控制卡講話的是「後台」。
+     下面填後台在哪裡。換場地、換網路就改這一格，其他都不用動。</p>
+  <label>後台網址</label>
+  <input id="apibase" placeholder="http://localhost:8080">
+  <div class="row" style="margin-top:10px">
+    <button class="btn sm" onclick="preset('http://localhost:8080')">本機</button>
+    <button class="btn sm" onclick="preset(location.origin)">同一台（現在這個網址）</button>
+    <button class="btn sm" onclick="preset('')">離線預覽</button>
+    <span class="grow"></span>
+    <button class="btn sm primary" onclick="saveBase()">套用</button>
+  </div>
+  <div class="sep"></div>
+  <p class="hint"><b>連不上的時候先看這裡：</b></p>
+  <p class="hint">· 這個頁面走 https、後台走 http 的話，瀏覽器只准連 <code>localhost</code>，
+     區網 IP（192.168.x.x）會被擋掉。要嘛把頁面存到本機用 http 開，
+     要嘛給後台一個 https 網址（見 <code>遠端架構.md</code> 的 Cloudflare Tunnel 那節）。</p>
+  <p class="hint">· 後台沒開 → 先在那台電腦跑 <code>後台.bat</code>。</p>
+</div>
+
+<div id="offlinebanner" class="banner" style="display:none">
+  <b>離線預覽模式。</b>現在看到的是排版和畫面預覽，沒有連到任何後台，
+  按鈕不會真的對控制卡做事。要實際操作請按右上角「連線設定」填後台網址。
+</div>
+
+<main>
+<!-- ------------------------------------------------------ 左：門店 -->
+<aside>
+  <div class="panel">
+    <h2>門店</h2>
+    <div id="storelist"></div>
+    <div class="sep"></div>
+    <details>
+      <summary>新增門店</summary>
+      <p class="hint">代號是英文短代號，小寫、不要空格。取了不要改，它會變成檔名前綴。</p>
+      <label>代號</label><input id="nid" placeholder="kaohsiung">
+      <label>店名</label><input id="nname" placeholder="高雄店">
+      <div class="f2">
+        <div><label>畫布寬</label><input id="nw" inputmode="numeric" placeholder="960"></div>
+        <div><label>畫布高</label><input id="nh" inputmode="numeric" placeholder="120"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" onclick="addStore()">＋ 建立</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2>亮度</h2>
+    <p class="hint" style="margin-bottom:10px">室內建議 40〜60。白天門口有西曬才需要拉到 80 以上。</p>
+    <div class="row">
+      <button class="btn sm grow" onclick="bright(30)">30</button>
+      <button class="btn sm grow" onclick="bright(50)">50</button>
+      <button class="btn sm grow" onclick="bright(80)">80</button>
+      <button class="btn sm grow" onclick="bright(100)">100</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ------------------------------------------------------ 右：控制 -->
+<section>
+  <div class="panel">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <h2 style="margin:0">目前選擇</h2>
+        <div id="curname" style="font-size:19px;font-weight:700;margin-top:2px">—</div>
+        <div id="curmeta" class="hint"></div>
+      </div>
+      <button class="btn" onclick="doConnect()">連線到卡</button>
+      <button class="btn primary" id="pubbtn" onclick="doPublish()">發佈到卡</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>畫面預覽</h2>
+    <canvas id="prev" class="screen"></canvas>
+    <div class="ruler"><span id="prevleft">—</span><span id="prevright"></span></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn sm" id="livebtn" onclick="toggleLive()">播放待機畫面</button>
+      <button class="btn sm" onclick="loadShot()">抓屏上實際畫面</button>
+    </div>
+    <p class="hint" style="margin-top:8px">
+      預覽是照 <code>artwork.py</code> 的同一套公式在瀏覽器裡重畫的待機漸層，
+      改完參數不必發佈就能先看。抓實際畫面對影片內容會是全黑，那是卡的限制不是壞掉。</p>
+  </div>
+
+  <div id="features" class="grid"></div>
+
+  <div class="panel">
+    <h2>紀錄</h2>
+    <div id="log">—</div>
+  </div>
+</section>
+</main>
+
+<p class="hint" style="margin:30px 0 10px;text-align:center">
+  介面部署在 GitHub Pages，後台跑在店裡那台看得到控制卡的機器上。<br>
+  為什麼要這樣分，以及斷線時怎麼辦，寫在專案的 <code>遠端架構.md</code>。
+</p>
+</div>
+
+<script>
+/* ==================================================================
+   OKAWARI 門頭屏 · 控制台前端
+
+   這支是純靜態頁面，可以直接放 GitHub Pages。
+   它自己不認得控制卡，所有動作都是打 API 給「後台」，
+   後台才是那台看得到卡的機器。所以後台位置要能改，存在 localStorage。
+   ================================================================== */
+
+const $ = id => document.getElementById(id);
+let BASE = localStorage.getItem('okawari_api');
+if (BASE === null) BASE = guessBase();
+let D = null;              // 後台回來的整包資料
+let SEL = localStorage.getItem('okawari_store') || '';
+let ONLINE = false;
+let BUSY = false;
+
+/* 第一次開的時候猜一個合理的後台位置：
+   從後台自己端出來的話用同一個 origin，從 GitHub Pages 開的話用 localhost。 */
+function guessBase(){
+  if (location.protocol === 'file:') return 'http://localhost:8080';
+  if (location.hostname.endsWith('github.io')) return 'http://localhost:8080';
+  return location.origin;
+}
+
+/* ---------------------------------------------------------------- API */
+async function api(path, body){
+  if (!BASE) throw new Error('OFFLINE');
+  const opt = {cache:'no-store'};
+  if (body){ opt.method='POST'; opt.body=JSON.stringify(body); }
+  const ctl = new AbortController();
+  const kill = setTimeout(()=>ctl.abort(), 180000);   // 發佈會跑很久
+  opt.signal = ctl.signal;
+  try{
+    const r = await fetch(BASE.replace(/\/$/,'') + path, opt);
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    return j;
+  } finally { clearTimeout(kill); }
+}
+
+function toast(msg, kind){
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind||'');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), kind==='bad' ? 6000 : 2600);
+}
+
+/* ---------------------------------------------------------------- 設定 */
+function toggleSettings(){
+  const s = $('settings');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+  $('apibase').value = BASE;
+}
+function preset(v){ $('apibase').value = v; }
+function saveBase(){
+  BASE = $('apibase').value.trim().replace(/\/$/,'');
+  localStorage.setItem('okawari_api', BASE);
+  $('settings').style.display = 'none';
+  toast(BASE ? ('後台設成 ' + BASE) : '切到離線預覽');
+  refresh();
+}
+
+/* ---------------------------------------------------------------- 內容定義
+   每個功能底下要出現哪些可調參數。跟 artwork.py 的 DEFAULT_PARAMS 對應。 */
+const FEATURES = [
+  {key:'idle', name:'待機畫布', desc:'紅→黃漸層，無縫循環。沒事就播這個。', fields:[
+    ['idle_scroll','漸層跑動（一輪跑幾趟，0 = 不跑、只在原地慢慢變色）'],
+    ['idle_seconds','長度（秒）'],
+    ['idle_fps','每秒幾格'],
+    ['gradient_window','漸變跨度 0〜1（越小顏色跨度越窄）'],
+    ['dither','顆粒強度（0 = 完全乾淨，但容易出色帶）'],
+  ]},
+  {key:'patrol', name:'整點巡迴', desc:'勇者追著壞人跑過畫面，兩個同時在畫面上。', fields:[
+    ['patrol_every_minutes','自動觸發間隔（分鐘，0 = 不自動）'],
+    ['patrol_seconds','長度（秒）'],
+    ['patrol_fps','每秒幾格'],
+    ['patrol_gap','勇者落後壞人的距離'],
+  ]},
+  {key:'okawari', name:'續碗促銷', desc:'擲骰決定中獎。中了才劈石、才出字。', fields:[
+    ['okawari_text','中獎文字'],
+    ['okawari_hit_chance','中獎機率 0〜1'],
+    ['okawari_seconds','長度（秒）'],
+    ['okawari_fps','每秒幾格'],
+    ['okawari_stone','石頭位置 0〜1'],
+  ]},
+];
+
+/* ---------------------------------------------------------------- 離線示範資料 */
+const DEMO = {
+  offline: true,
+  connected: null, card_ip: null,
+  params: {idle_seconds:30, idle_fps:2, idle_scroll:0, patrol_every_minutes:0,
+    patrol_seconds:12, patrol_fps:25, okawari_seconds:8, okawari_fps:25,
+    okawari_hit_chance:0.25, patrol_gap:30, okawari_stone:0.55,
+    gradient_window:0.72, dither:0.22, hero_scale:0.72,
+    okawari_text:'おかわり おめでとう!'},
+  stores: [
+    {id:'test', name:'測試版（公司測試卡）', canvas:{width:160,height:40},
+     mirror:{of:'tainan',align:'center'}, published:{idle:{},patrol:{},okawari:{}},
+     contents:[{key:'idle',enabled:true},{key:'patrol',enabled:true},{key:'okawari',enabled:true}]},
+    {id:'tainan', name:'台南店', canvas:{width:960,height:120},
+     contents:[{key:'idle',enabled:true},{key:'patrol',enabled:true},{key:'okawari',enabled:true}]},
+    {id:'taichung', name:'台中店', canvas:{width:1040,height:120},
+     contents:[{key:'idle',enabled:true},{key:'patrol',enabled:true},{key:'okawari',enabled:true}]},
+  ],
+  log: ['（離線預覽，沒有真的紀錄）'],
+};
+
+/* ---------------------------------------------------------------- 主更新 */
+async function refresh(){
+  if (BUSY) return;
+  let ok = false;
+  try {
+    D = await api('/api/stores');
+    ok = true;
+  } catch(e) {
+    D = DEMO;
+  }
+  ONLINE = ok;
+  $('offlinebanner').style.display = ok ? 'none' : 'block';
+  $('dot').className = 'dot ' + (ok ? (D.connected ? 'on' : 'wait') : 'off');
+  $('connlabel').textContent = !ok ? '後台未連線'
+    : D.connected ? ('卡已連線 · ' + D.card_ip)
+    : '後台在，卡未連線';
+
+  if (!D.stores.some(s => s.id === SEL)) SEL = (D.stores[0]||{}).id || '';
+  drawStores();
+  drawCurrent();
+  drawFeatures();
+  $('log').textContent = (D.log||[]).join('\n') || '—';
+
+  // 每次更新都重畫預覽。不能只靠 live 的動畫迴圈 —— 瀏覽器切到別的分頁時
+  // requestAnimationFrame 會停掉，回來時畫布還停在上一家店的尺寸。
+  // 除非現在畫的是抓回來的實際畫面，那就別蓋掉。
+  if (mode === 'preview') drawPreview(phase);
+}
+
+function drawStores(){
+  $('storelist').innerHTML = D.stores.map(s => {
+    const c = s.canvas||{};
+    const pubn = Object.keys(s.published||{}).length;
+    const st = pubn
+      ? `<span class="tag ok st">已發佈</span>`
+      : `<span class="tag st">未發佈</span>`;
+    return `<button class="storeitem ${s.id===SEL?'sel':''}" onclick="pick('${s.id}')">
+      ${st}<b>${esc(s.name)}</b>
+      <span>${c.width ? c.width+'×'+c.height : '畫布未定'}${s.mirror?' · 鏡像自 '+s.mirror.of:''}</span>
+    </button>`;
+  }).join('');
+}
+
+function cur(){ return (D.stores||[]).find(s => s.id === SEL) || {}; }
+
+function drawCurrent(){
+  const s = cur(), c = s.canvas||{};
+  $('curname').textContent = s.name || '—';
+  const bits = [];
+  if (c.width) bits.push(c.width + ' × ' + c.height + ' 像素');
+  if (s.mirror) bits.push('鏡像自 ' + s.mirror.of + '（' + s.mirror.align + ' 對齊）');
+  const netmap = {'4g-router':'4G 路由器','none':'沒有對外網路','lan':'店內網路'};
+  if (s.network) bits.push(netmap[s.network.uplink] || s.network.uplink);
+  $('curmeta').textContent = bits.join(' · ');
+  $('pubbtn').disabled = !ONLINE;
+}
+
+function drawFeatures(){
+  const s = cur(), pub = s.published||{}, P = D.params||{};
+  $('features').innerHTML = FEATURES.filter(f =>
+    (s.contents||[]).some(c => c.key===f.key && c.enabled)
+  ).map(f => {
+    const ready = !!pub[f.key];
+    return `<div class="feat">
+      <h3>${f.name}</h3>
+      <div class="desc">${f.desc}</div>
+      <button class="trigger" ${(!ready||!ONLINE)?'disabled':''}
+        onclick="trigger('${f.key}')">${ready?'▶ 播放':'尚未發佈'}</button>
+      <details style="margin-top:12px">
+        <summary>參數</summary>
+        ${f.fields.map(([k,lab]) =>
+          `<label>${lab}</label><input data-g="${f.key}" data-p="${k}"
+             value="${P[k]!==undefined?esc(String(P[k])):''}"
+             oninput="if('${k}'.startsWith('idle')||'${k}'=='gradient_window'||'${k}'=='dither')drawPreview(phase)">`
+        ).join('')}
+        <div class="row" style="margin-top:12px">
+          <button class="btn sm" onclick="saveGroup('${f.key}')">儲存參數</button>
+        </div>
+        <p class="hint" style="margin-top:8px">存完要按上面的「發佈到卡」才會重編上去。</p>
+      </details>
+    </div>`;
+  }).join('') || '<div class="panel hint">這家店還沒啟用任何內容。</div>';
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, m =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+/* ---------------------------------------------------------------- 動作 */
+function pick(id){ SEL = id; localStorage.setItem('okawari_store', id); refresh(); }
+
+async function act(fn, label){
+  if (!ONLINE) return toast('離線預覽，這個按鈕不會真的做事', 'bad');
+  BUSY = true;
+  try { await fn(); toast(label + ' 完成', 'ok'); }
+  catch(e){ toast(label + ' 失敗：' + e.message, 'bad'); }
+  finally { BUSY = false; refresh(); }
+}
+
+function doConnect(){ act(() => api('/api/connect?store=' + SEL), '連線'); }
+
+function doPublish(){
+  if (!confirm('要重新編譯並送到卡上嗎？\n畫布越大越久，960×120 大約要一兩分鐘。')) return;
+  $('pubbtn').textContent = '編譯發佈中…';
+  act(() => api('/api/publish?store=' + SEL), '發佈')
+    .finally(() => $('pubbtn').textContent = '發佈到卡');
+}
+
+function trigger(key){
+  act(async () => {
+    const r = await api('/api/switch?store=' + SEL + '&key=' + key);
+    if (r.hit === true)  toast('續碗中獎！劈石版本', 'ok');
+    if (r.hit === false) toast('續碗沒中，跑過去版本');
+  }, '播放');
+}
+
+function bright(v){ act(() => api('/api/brightness?value=' + v), '亮度 ' + v); }
+
+function saveGroup(k){
+  const b = {};
+  document.querySelectorAll('[data-g="' + k + '"]').forEach(i => b[i.dataset.p] = i.value);
+  act(() => api('/api/params', b), '儲存參數');
+}
+
+function addStore(){
+  const b = {id:$('nid').value.trim(), name:$('nname').value.trim(),
+             width:$('nw').value, height:$('nh').value};
+  if (!b.id) return toast('要先填代號', 'bad');
+  act(() => api('/api/add_store', b), '新增門店');
+}
+
+async function loadShot(){
+  if (!ONLINE) return toast('離線預覽抓不到畫面', 'bad');
+  stopLive();
+  const cv = $('prev'), g = cv.getContext('2d');
+  const im = new Image();
+  im.onload = () => {
+    mode = 'shot';
+    cv.width = im.width; cv.height = im.height;
+    cv.style.aspectRatio = im.width + ' / ' + im.height;
+    g.drawImage(im, 0, 0);
+    $('prevleft').textContent = '屏上實際畫面 ' + im.width + '×' + im.height;
+    $('prevright').textContent = new Date().toLocaleTimeString();
+  };
+  im.onerror = () => toast('抓不到畫面。影片內容本來就截不到圖，會是黑的。', 'bad');
+  im.src = BASE + '/api/shot?' + Date.now();
+}
+
+/* ================================================================
+   待機漸層預覽
+   照 artwork.py 的 Screen.gradient() 一比一搬過來，
+   這樣後台還沒開、或還沒發佈的時候也看得到改參數的效果。
+   ================================================================ */
+const RED=[226,58,46], ORG=[240,120,24], YEL=[247,179,43];
+const RAMP = (() => {
+  const r = new Uint8Array(256*3);
+  for (let i=0;i<256;i++){
+    const t = i/255;
+    let c;
+    if (t < 0.5){ const u=t*2; c = RED.map((v,k)=>v+(ORG[k]-v)*u); }
+    else { const u=(t-0.5)*2; c = ORG.map((v,k)=>v+(YEL[k]-v)*u); }
+    r[i*3]=c[0]|0; r[i*3+1]=c[1]|0; r[i*3+2]=c[2]|0;
+  }
+  return r;
+})();
+
+/* 讀參數：優先讀畫面上正在編輯的輸入框，沒有才用後台存的值。
+   這樣調參數是即時看得到的，不用先存檔。 */
+function livParam(name, dflt){
+  const el = document.querySelector('[data-p="' + name + '"]');
+  if (el && el.value !== '') { const v = parseFloat(el.value); if (!isNaN(v)) return v; }
+  const v = (D && D.params) ? parseFloat(D.params[name]) : NaN;
+  return isNaN(v) ? dflt : v;
+}
+
+let live = false, phase = 0, raf = null;
+let mode = 'preview';        // 'preview' = 自己算的漸層；'shot' = 從卡上抓回來的畫面
+
+function drawPreview(ph){
+  mode = 'preview';
+  const s = cur(), c = s.canvas || {};
+  const cols = c.width || 160, rows = c.height || 40;
+  const cv = $('prev'), g = cv.getContext('2d');
+  cv.width = cols; cv.height = rows;
+  cv.style.aspectRatio = cols + ' / ' + rows;
+
+  const win = livParam('gradient_window', 0.72);
+  const dAmt = livParam('dither', 0.22);
+  const dth = []; for (let k=0;k<17;k++) dth.push(((k/17)-0.5)*dAmt);
+
+  const img = g.createImageData(cols, rows);
+  const px = img.data;
+  const span = Math.max(1, cols-1);
+  let i = 0;
+  for (let y=0;y<rows;y++){
+    const d13 = 13*y;
+    for (let x=0;x<cols;x++){
+      let t = ph + (x/span)*win + dth[(7*x + d13) % 17];
+      t = t < 0 ? 0 : (t > 1 ? 1 : t);
+      const o = (t*255|0)*3;
+      px[i++]=RAMP[o]; px[i++]=RAMP[o+1]; px[i++]=RAMP[o+2]; px[i++]=255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+
+  $('prevleft').textContent = '待機畫布預覽 ' + cols + '×' + rows;
+  $('prevright').textContent = s.mirror
+    ? ('這是 ' + s.mirror.of + ' 等比縮小後的中段')
+    : '主畫布';
+}
+
+/* phase 走三角波，跟 render_idle() 一樣，這樣尾接頭不會跳。 */
+function toggleLive(){ live ? stopLive() : startLive(); }
+function startLive(){
+  live = true; $('livebtn').textContent = '停止';
+  const secs = Math.max(1, livParam('idle_seconds', 30));
+  const room = 1 - livParam('gradient_window', 0.72);
+  const t0 = performance.now();
+  (function step(now){
+    if (!live) return;
+    const q = ((now - t0) / 1000 / secs) % 1;
+    phase = room * (q < 0.5 ? q*2 : (1-q)*2);
+    drawPreview(phase);
+    raf = requestAnimationFrame(step);
+  })(t0);
+}
+function stopLive(){
+  live = false; if (raf) cancelAnimationFrame(raf);
+  $('livebtn').textContent = '播放待機畫面';
+}
+
+/* ---------------------------------------------------------------- 啟動 */
+refresh();
+setInterval(() => { if (!BUSY) refresh(); }, 6000);
+</script>
+</body>
+</html>

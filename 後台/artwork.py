@@ -138,6 +138,23 @@ DEFAULT_PARAMS = {
     "siesta_seconds": 20, "siesta_fps": 12,     # 睡覺不用高幀率
     "opening_seconds": 14, "opening_fps": 25,
     "evening_seconds": 16, "evening_fps": 25,
+    # 晚間那句台詞。預設空的 —— 長中文在 P4 屏上遠看會糊，
+    # 而且它是唯一一句「看不懂就沒意義」的文案。要放再填。
+    "evening_text": "",
+
+    # 續飯 COMBO 三段（業主 2026-08-18 需求）。三段是接續的，
+    # combo2 的起始大小＝combo1 的結束大小，秒數改動要三段一起看。
+    "combo1_seconds": 3, "combo1_fps": 25,
+    "combo2_seconds": 4, "combo2_fps": 25,
+    "combo3_seconds": 7, "combo3_fps": 25,
+
+    # 滿額 1000（金飯碗）與買一送一。字都開成參數 ——
+    # 兩店檔期不同，改一個日期不該要重畫一整套圖。
+    "bonus_seconds": 9, "bonus_fps": 25,
+    "bonus_text": "GOLDEN BOWL UNLOCKED!",
+    "bogo_seconds": 13, "bogo_fps": 25,
+    "bogo_text": "1 + 1",
+    "bogo_date": "9/1-9/2",
 }
 
 
@@ -428,3 +445,10 @@ try:
     RENDERERS.update(segment_art.RENDERERS)
 except Exception as _e:          # 美術還沒到位時不要讓整個後台起不來
     print("角色美術載入失敗，先跳過：%r" % (_e,))
+
+# 活動畫面（滿額 1000、買一送一）另外一支檔案。分開的理由見 scene_promo.py。
+try:
+    import scene_promo
+    RENDERERS.update(scene_promo.RENDERERS)
+except Exception as _e:
+    print("活動美術載入失敗，先跳過：%r" % (_e,))

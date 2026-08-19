@@ -168,6 +168,17 @@ def fit(im, mw, mh, ow, oh, align="center"):
 
 
 # ---------------------------------------------------------------- 編譯
+def art_of(item):
+    """這個排播項目用哪一支美術。
+
+    key 是「排播單位」，art 是「美術」。兩者分開之後，同一支美術可以掛在
+    好幾個時段上 —— 整點彩蛋就是這樣做的：11 個整點共用 3 支影片，
+    不必編 11 次，也不必往卡上送 11 個檔（卡的空間和節目數都有限）。
+    沒寫 art 就是 key 自己，舊的設定檔不用改。
+    """
+    return item.get("art") or item["key"]
+
+
 def build_store(store, data, log=print):
     """算出一家店所有啟用內容的影片。回傳 {key: mp4 路徑}。"""
     mw, mh, ow, oh, align = resolve_canvas(store, data)
@@ -183,37 +194,48 @@ def build_store(store, data, log=print):
             os.remove(os.path.join(outdir, old))
 
     result = {}
-    todo = []
+    cache = {}                     # 美術代號 → 影片路徑。同一支只算一次。
     for item in store.get("contents", []):
-        if item.get("enabled"):
-            todo += artwork.VARIANTS.get(item["key"], [item["key"]])
-
-    for key in todo:
-        fn = artwork.RENDERERS.get(key)
-        if not fn:
-            log("  [%s] %s 還沒有對應的美術，跳過" % (store["id"], key))
+        if not item.get("enabled"):
             continue
+        a = art_of(item)
+        for key in artwork.VARIANTS.get(a, [a]):
+            # 有變體時用變體名當索引（okawari／okawari_miss），
+            # 沒有的話用排播單位的名字 —— 這樣同一支美術掛在不同時段才不會互相蓋掉。
+            out_key = key if key != a else item["key"]
+            if key in cache:
+                result[out_key] = cache[key]
+                log("  [%s] %-13s 共用 %s 的影片" % (store["id"], out_key, key))
+                continue
 
-        pk = artwork.param_key(key)
-        fps = int(prm["%s_fps" % pk])
-        frames = [fit(im, mw, mh, ow, oh, align) for im in fn(mw, mh, prm)]
-        tmp = os.path.join(outdir, "_tmp_%s.mp4" % key)
-        encode_video(frames, tmp, fps, log, scale=int(prm.get("video_scale", 2)))
+            fn = artwork.RENDERERS.get(key)
+            if not fn:
+                log("  [%s] %s 還沒有對應的美術，跳過" % (store["id"], out_key))
+                continue
+
+            pk = artwork.param_key(key)
+            fps = int(prm["%s_fps" % pk])
+            frames = [fit(im, mw, mh, ow, oh, align) for im in fn(mw, mh, prm)]
+            tmp = os.path.join(outdir, "_tmp_%s.mp4" % key)
+            encode_video(frames, tmp, fps, log,
+                         scale=int(prm.get("video_scale", 2)))
 
         # 檔名帶內容雜湊：內容一變檔名就變。
         # 不這樣做的話會踩到送檔協議的斷點續傳 —— 同名但內容不同時，
         # 卡回報的是舊檔的長度，我們只補送尾巴，卡上就變成新舊混雜的壞檔，
         # 傳輸與建節目全部回 kSuccess，但畫面是黑的（2026-08-10 實測踩過）。
-        with open(tmp, "rb") as f:
-            digest = hashlib.md5(f.read()).hexdigest()[:8]
-        path = os.path.join(outdir, "%s_%s_%s.mp4" % (store["id"], key, digest))
-        if os.path.exists(path):
-            os.remove(path)
-        os.replace(tmp, path)
-        result[key] = path
-        log("  [%s] %-13s %d 幀 @ %d fps = %.1f 秒，影片 %.0f KB"
-            % (store["id"], key, len(frames), fps, len(frames) / fps,
-               os.path.getsize(path) / 1024))
+            with open(tmp, "rb") as f:
+                digest = hashlib.md5(f.read()).hexdigest()[:8]
+            path = os.path.join(outdir,
+                                "%s_%s_%s.mp4" % (store["id"], key, digest))
+            if os.path.exists(path):
+                os.remove(path)
+            os.replace(tmp, path)
+            cache[key] = path
+            result[out_key] = path
+            log("  [%s] %-13s %d 幀 @ %d fps = %.1f 秒，影片 %.0f KB"
+                % (store["id"], out_key, len(frames), fps, len(frames) / fps,
+                   os.path.getsize(path) / 1024))
     return result
 
 
@@ -279,23 +301,30 @@ def publish_store(card, store, built, data, log=print):
 
     clean_media(card, {os.path.basename(p) for p in built.values()}, log)
 
+    sent = {}                      # 檔名 → 送成功沒有。共用的美術只送一次。
     for key, path in built.items():
         name = os.path.basename(path)
-        hs.send_file(card, path, file_type=hs.FILE_TYPE_VIDEO, progress=False)
+        if name not in sent:
+            hs.send_file(card, path, file_type=hs.FILE_TYPE_VIDEO, progress=False)
 
-        # 對一次 md5。壞檔要當場抓出來，不要等到看見黑屏才知道。
-        with open(path, "rb") as f:
-            want = hashlib.md5(f.read()).hexdigest().lower()
-        got = card_file_info(card, name)
-        if not got:
-            log("    ✗ 卡上找不到 %s，跳過" % name)
-            continue
-        if got.get("md5", "").lower() != want or int(got.get("existSize", -1)) != os.path.getsize(path):
-            log("    ✗ 卡上的 %s 對不起來（md5 %s vs %s），跳過"
-                % (name, got.get("md5", "")[:8], want[:8]))
+            # 對一次 md5。壞檔要當場抓出來，不要等到看見黑屏才知道。
+            with open(path, "rb") as f:
+                want = hashlib.md5(f.read()).hexdigest().lower()
+            got = card_file_info(card, name)
+            ok = bool(got)
+            if not got:
+                log("    ✗ 卡上找不到 %s，跳過" % name)
+            elif (got.get("md5", "").lower() != want
+                  or int(got.get("existSize", -1)) != os.path.getsize(path)):
+                log("    ✗ 卡上的 %s 對不起來（md5 %s vs %s），跳過"
+                    % (name, got.get("md5", "")[:8], want[:8]))
+                ok = False
+            sent[name] = ok
+        if not sent[name]:
             continue
 
-        secs = prm["%s_seconds" % artwork.param_key(key)]
+        item0 = by_key.get(key) or by_key.get(artwork.param_key(key)) or {}
+        secs = prm["%s_seconds" % artwork.param_key(art_of(item0) if item0 else key)]
         log("  [%s] %s：送了 %s（%.0f KB，%.1f 秒）"
             % (store["id"], key, name, os.path.getsize(path) / 1024, secs))
 
@@ -304,7 +333,7 @@ def publish_store(card, store, built, data, log=print):
         # playControl 帶排播條件（時段／日期／星期），卡就會自己按時鐘換節目，
         # 不需要後台在線上輪詢。開幕活動設了日期還會自己過期。
         # 條件寫在 stores.json 的 contents[].when，見 schedule.py。
-        item = by_key.get(artwork.param_key(key)) or by_key.get(key) or {}
+        item = item0
         pc = sched.play_control_xml(item)
         if item.get("when") or item.get("trigger") == "manual":
             log("    排播：%s" % pc.replace('<playControl count="1">', '')

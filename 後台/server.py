@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(
 sys.path.insert(0, HERE)
 import hd_test as hd          # noqa: E402
 import compiler as comp       # noqa: E402
+import schedule as sched      # noqa: E402
 
 
 # ---------------------------------------------------------------- 資料
@@ -411,6 +412,27 @@ def api(path, q, body):
             note("參數更新：%s" % ", ".join("%s=%s" % kv for kv in body.items()))
         return {"params": comp.artwork.params(data.get("params"))}
 
+    # 每店自己的文案。旗幟上的日期兩店不一樣（中港 9/1-2、小北 9/2-3），
+    # 全域參數蓋不掉這種差異，所以另外開一支，寫進 store["params"]，
+    # 編譯時由 compiler.merged_params 覆寫全域值。
+    # 欄位留空 = 把覆寫拿掉，退回全域設定。
+    if path == "/api/store_params":
+        s = get_store(data, body.get("store") or body.get("id") or "")
+        if not s:
+            raise ValueError("沒有這家店")
+        p = s.setdefault("params", {})
+        for k, v in (body.get("params") or {}).items():
+            txt = str(v).strip()
+            if txt:
+                p[k] = txt
+            else:
+                p.pop(k, None)
+        if not p:
+            s.pop("params", None)
+        save(data)
+        note("%s 的活動文案更新" % s["name"])
+        return {"ok": True, "params": s.get("params") or {}, "needs_publish": True}
+
     if path == "/api/stores":
         with _revlock:
             dialed = {k: {"ip": c.ip, "last_seen": int(time.time() - c.last_seen)}
@@ -563,6 +585,85 @@ def api(path, q, body):
         s["canvas"]["source"] = "後台設定"
         save(data)
         return {"ok": True}
+
+    # 改一個內容的排播條件（時段／日期／星期）。控制台 v2 以時段為主，
+    # 所以這是最常用的一支。
+    #
+    # 只改 stores.json，不動卡 —— 條件是編進節目的 playControl 的，
+    # 要重新發佈才會上去。介面那邊會顯示「有改動未發佈」。
+    if path == "/api/set_when":
+        s = get_store(data, body.get("store") or body.get("id") or "")
+        if not s:
+            raise ValueError("沒有這家店")
+        key = body.get("key")
+        item = next((c for c in s.get("contents", []) if c.get("key") == key), None)
+        if not item:
+            raise ValueError("這家店沒有 %s 這個內容" % key)
+
+        when = item.setdefault("when", {})
+
+        # 兩格都空 = 把條件拿掉（變成全時段），只填一格是打錯，要擋下來。
+        if "time" in body:
+            t = [str(x or "").strip() for x in (body.get("time") or [])]
+            if len(t) == 2 and all(sched.parse_hhmm(x) is not None for x in t):
+                when["time"] = [sched.fmt(sched.parse_hhmm(x)) for x in t]
+            elif not any(t):
+                when.pop("time", None)
+            else:
+                raise ValueError("時段要填成 11:30 這種格式，而且兩格都要填")
+
+        if "date" in body:
+            d = [str(x or "").strip() for x in (body.get("date") or [])]
+            if len(d) == 2 and all(re.match(r"^\d{4}-\d{2}-\d{2}$", x) for x in d):
+                when["date"] = d
+            elif not any(d):
+                when.pop("date", None)
+            else:
+                raise ValueError("日期要填成 2026-09-01 這種格式，而且兩格都要填")
+
+        if "week" in body:
+            w = str(body.get("week") or "").strip()
+            if w:
+                when["week"] = w
+            else:
+                when.pop("week", None)
+
+        if not when:
+            item.pop("when", None)
+        save(data)
+        note("%s／%s 排程改成 %s" % (s["name"], key, when or "（無條件，隨時可播）"))
+        return {"ok": True, "when": when, "needs_publish": True}
+
+    # 營業時間。這一組跟「播什麼」是兩件事：它決定屏亮不亮。
+    #
+    # 一定要設在卡上 —— 打烊之後筆電早就不在了，靠後台送指令是關不掉的。
+    # 卡沒連著也先存起來，下次連上再按一次「套用」就送得進去。
+    if path == "/api/set_schedule":
+        sid = body.get("store") or body.get("id") or ""
+        s = get_store(data, sid)
+        if not s:
+            raise ValueError("沒有這家店")
+        sc = s.setdefault("schedule", {})
+        for k in ("open", "close"):
+            if k in body:
+                v = str(body.get(k) or "").strip()
+                if v and sched.parse_hhmm(v) is None:
+                    raise ValueError("%s 的時間格式不對：%s" % (k, v))
+                sc[k] = sched.fmt(sched.parse_hhmm(v)) if v else None
+        if "screen_off_after_close" in body:
+            sc["screen_off_after_close"] = bool(body.get("screen_off_after_close"))
+        save(data)
+
+        pushed = None
+        if _card and _card_store == sid:
+            out = call(sched.switch_time_xml(sc.get("open"), sc.get("close"),
+                                             bool(sc.get("screen_off_after_close"))))
+            pushed = hd.attr(out, "out", "result")
+            note("定時開關屏 %s–%s → %s" % (sc.get("open"), sc.get("close"), pushed))
+        else:
+            note("營業時間存成 %s–%s（卡沒連著，還沒送進卡裡）"
+                 % (sc.get("open"), sc.get("close")))
+        return {"ok": True, "schedule": sc, "pushed": pushed}
 
     if path == "/api/toggle_content":
         s = get_store(data, body.get("id", ""))

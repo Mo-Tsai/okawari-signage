@@ -91,6 +91,19 @@ def in_week(enable, today):
     return not want or WEEKDAYS[today.weekday()] in want
 
 
+def is_base(c):
+    """這一項算不算「基本盤」。
+
+    只有 layer=base 的常駐畫面需要排滿營業時間、彼此不能重疊。
+    活動、整點彩蛋、手動觸發都是 layer=event —— 它們本來就是疊在常駐上面的，
+    拿去算重疊會一直誤報（整點彩蛋每個整點都會蓋到當下的常駐時段）。
+    沒寫 layer 的舊設定當成 base，行為跟以前一樣。
+    """
+    if not c.get("enabled") or c.get("trigger") == "manual":
+        return False
+    return c.get("layer", "base") == "base"
+
+
 def is_active(when, now=None):
     """這個 when 條件現在成不成立。
 
@@ -176,7 +189,7 @@ def coverage_gaps(contents, open_at, close_at):
     # 只看沒有日期限制的常駐內容。開幕活動是疊在上面的，不算基本盤。
     spans = []
     for c in contents or []:
-        if not c.get("enabled") or c.get("trigger") == "manual":
+        if not is_base(c):
             continue
         when = c.get("when") or {}
         if when.get("date"):
@@ -203,7 +216,7 @@ def overlaps(contents):
     """有沒有兩個常駐內容的時段疊在一起。疊到的話卡會兩個輪流播。"""
     items = []
     for c in contents or []:
-        if not c.get("enabled") or c.get("trigger") == "manual":
+        if not is_base(c):
             continue
         when = c.get("when") or {}
         if when.get("date"):

@@ -7,11 +7,18 @@
 <title>OKAWARI 門頭屏 · 控制台</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e23a2e'/><rect x='5' y='12' width='22' height='8' rx='2' fill='%23f7b32b'/></svg>">
 <style>
-/* ------------------------------------------------------------------ 基礎 */
+/* ==================================================================
+   控制台 v2 · 以時段為主
+
+   v1 是「三個功能各一張卡，按下去就播」。四段常駐上線之後那個排法就
+   不對了 —— 屏平常是卡自己按時鐘在換，沒有人在按按鈕。
+   所以這一版的主角是「一天」：現在是哪一段、接下來換什麼、
+   哪個時間沒排到東西。手動觸發降級成其中一小塊。
+   ================================================================== */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#14100e; --panel:#1e1814; --panel2:#261e19; --line:#3a2e25;
-  --ink:#f4ece4; --dim:#9b8b7d; --dim2:#6f6259;
+  --bg:#141010; --panel:#1e1816; --panel2:#261e19; --line:#3a2e28;
+  --ink:#f6efe8; --dim:#a2938a; --dim2:#6f625b;
   --red:#e23a2e; --org:#f07818; --yel:#f7b32b;
   --ok:#6ed36e; --bad:#ff7a5c; --warn:#f7b32b;
   --r:12px;
@@ -19,24 +26,25 @@
 body{
   background:var(--bg); color:var(--ink);
   font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
-  -webkit-font-smoothing:antialiased; padding-bottom:60px;
+  -webkit-font-smoothing:antialiased; padding-bottom:70px;
 }
 a{color:var(--yel)}
-button,input,select,textarea{font:inherit;color:inherit}
+button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
+code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#c8b8a8}
 ::selection{background:var(--org);color:#1a1008}
+.num{font-variant-numeric:tabular-nums}
 
 /* ------------------------------------------------------------------ 版面 */
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
-header{
-  border-bottom:1px solid var(--line); background:#181310;
-  position:sticky; top:0; z-index:50;
-  backdrop-filter:blur(8px);
-}
-.hbar{display:flex;align-items:center;gap:14px;padding:12px 0;flex-wrap:wrap}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header{border-bottom:1px solid var(--line);background:#181312f2;
+  position:sticky;top:0;z-index:50;backdrop-filter:blur(10px)}
+.hbar{display:flex;align-items:center;gap:12px;padding:11px 0;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.02em}
-.logo i{width:26px;height:12px;border-radius:3px;
-  background:linear-gradient(90deg,var(--red),var(--yel));display:block}
+.logo i{width:26px;height:12px;border-radius:3px;display:block;
+  background:linear-gradient(90deg,var(--red),var(--yel))}
+.clock{font-size:19px;font-weight:700;letter-spacing:.02em}
+.clock small{font-size:12px;font-weight:400;color:var(--dim);margin-left:6px}
 .spacer{flex:1}
 .conn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--dim);
   border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:var(--panel)}
@@ -46,107 +54,175 @@ header{
 .dot.wait{background:var(--warn);animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.3}}
 
-main{display:grid;grid-template-columns:270px 1fr;gap:22px;padding-top:22px;align-items:start}
-@media(max-width:860px){main{grid-template-columns:1fr}}
+.hact{display:flex;gap:8px;align-items:center}
+.stores{display:flex;gap:8px;padding:0 0 11px;flex-wrap:wrap;align-items:center}
 
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
-  padding:16px;margin-bottom:16px}
-.panel h2{font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.06em;
-  text-transform:uppercase;margin-bottom:12px}
-.hint{color:var(--dim);font-size:13px;line-height:1.6}
+/* 手機上這個表頭是黏在上面的，三行就會吃掉三分之一的畫面。
+   所以窄螢幕時：品牌字收掉、三顆按鈕自己成一行、門店改成橫向滑一排。 */
+@media(max-width:640px){
+  .lname{display:none}
+  .hact{width:100%}
+  .hact .btn{flex:1;text-align:center}
+  .stores{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .stores::-webkit-scrollbar{display:none}
+  .chip{flex:none;white-space:nowrap}
+}
+.chip{padding:7px 14px;border-radius:20px;border:1px solid var(--line);
+  background:var(--panel);font-size:14px;transition:border-color .12s,background .12s}
+.chip:hover{background:var(--panel2)}
+.chip.sel{border-color:var(--org);background:#2c211a}
+.chip b{font-weight:600}
+.chip span{color:var(--dim);font-size:12px;margin-left:6px}
+
+section{margin-top:26px}
+h2.head{font-size:12.5px;font-weight:600;color:var(--dim);letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:10px}
+h2.head .sub{text-transform:none;letter-spacing:0;color:var(--dim2);font-weight:400;font-size:12.5px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.panel+.panel{margin-top:12px}
+.hint{color:var(--dim);font-size:13px;line-height:1.7}
 .hint+.hint{margin-top:6px}
+.sep{height:1px;background:var(--line);margin:14px 0}
 
-/* ------------------------------------------------------------------ 門店清單 */
-.storeitem{display:block;width:100%;text-align:left;padding:11px 12px;border-radius:9px;
-  border:1px solid transparent;margin-bottom:6px;transition:background .12s}
-.storeitem:hover{background:var(--panel2)}
-.storeitem.sel{background:var(--panel2);border-color:var(--org)}
-.storeitem b{display:block;font-size:15px;font-weight:600}
-.storeitem span{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
-.storeitem .st{float:right;margin-top:5px}
+/* ------------------------------------------------------------------ 現在這一段 */
+.now{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+@media(max-width:800px){.now{grid-template-columns:1fr}}
+.screen{width:100%;background:#000;border-radius:8px;border:1px solid var(--line);
+  display:block;image-rendering:pixelated}
+.screen video{display:block;width:100%;height:auto;image-rendering:pixelated;border-radius:7px}
+.shotbox{position:relative}
+.ruler{display:flex;justify-content:space-between;font-size:11px;color:var(--dim2);margin-top:6px}
+.nowtag{display:inline-block;font-size:12px;font-weight:700;color:#1a1008;
+  padding:3px 12px;border-radius:20px;margin-bottom:9px;
+  background:linear-gradient(90deg,var(--org),var(--yel))}
+.nowtag.dark{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+.nowname{font-size:27px;font-weight:800;line-height:1.25;letter-spacing:-.01em}
+.nowtime{font-size:15px;color:var(--yel);margin-top:4px;font-weight:600}
+.nowdesc{color:var(--dim);font-size:13.5px;margin-top:9px}
+.nowfoot{margin-top:auto;padding-top:14px}
 
-/* ------------------------------------------------------------------ 內容卡 */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.feat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
-  padding:16px;display:flex;flex-direction:column}
-.feat h3{font-size:17px;margin-bottom:3px}
-.feat .desc{color:var(--dim);font-size:13px;margin-bottom:14px;flex:1}
-.trigger{width:100%;padding:16px;border-radius:10px;font-size:16px;font-weight:700;
-  background:linear-gradient(96deg,var(--red),var(--org) 55%,var(--yel));color:#1a1008;
-  transition:filter .12s,transform .06s}
-.trigger:hover{filter:brightness(1.1)}
-.trigger:active{transform:translateY(1px)}
-.trigger[disabled]{background:var(--panel2);color:var(--dim2);cursor:not-allowed;filter:none}
+/* ------------------------------------------------------------------ 時間軸 */
+.tl{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+.tlrow{display:flex;height:46px;position:relative}
+.tlrow.thin{height:26px;border-top:1px solid var(--line)}
+.tlrow>div{display:flex;align-items:center;justify-content:center;min-width:0;
+  font-size:12.5px;font-weight:600;color:#1a1008;white-space:nowrap;overflow:hidden;
+  border-right:1px solid #0003;cursor:pointer;position:relative}
+.tlrow>div:last-child{border-right:0}
+.tlrow>div.gap{background:repeating-linear-gradient(45deg,#2a201b,#2a201b 6px,#332720 6px,#332720 12px);
+  color:var(--bad);font-weight:500;cursor:default}
+.tlrow>div.dis{background:#2a211c;color:var(--dim2);font-weight:500}
+.tlrow>div.promo{background:linear-gradient(90deg,#7a2a48,#a8365c);color:#ffe9f0;font-size:11.5px}
+.tlrow>div.empty{background:transparent;cursor:default;border-right:0}
+.tlnow{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);z-index:3;
+  box-shadow:0 0 6px #fff8}
+.tlnow::before{content:"";position:absolute;top:-1px;left:-4px;
+  border:5px solid transparent;border-top-color:var(--ink)}
+.tlscale{display:flex;font-size:11px;color:var(--dim2);padding:6px 0;border-top:1px solid var(--line)}
+.tlscale div{flex:1;text-align:center}
+
+/* ------------------------------------------------------------------ 時段卡 */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px}
+.seg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:14px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.seg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--seg,var(--org))}
+.seg.live{border-color:var(--org);background:#221a15}
+.seg.off{opacity:.55}
+.seg.off::before{background:var(--dim2)}
+.seg h3{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.seg .who{font-size:12px;color:var(--dim);margin:2px 0 10px}
+.seg .thumb{border-radius:7px;overflow:hidden;background:#000;border:1px solid var(--line);
+  margin-bottom:11px}
+.seg .thumb video,.seg .thumb canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.seg .thumb .none{padding:20px 12px;text-align:center;color:var(--dim2);font-size:12.5px}
+.seg .foot{margin-top:auto;padding-top:11px}
+
+.times{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+/* 時間欄不能太窄 —— Chrome 的中文語系會把 11:30 顯示成「上午 11:30」，
+   給 104px 就被裁成「上午 11:」，看起來像壞掉。 */
+.times input{width:138px}
+@media(max-width:400px){.times input{width:126px}}
+.times .to{color:var(--dim2)}
+input[type=time],input[type=date],input[type=text],input[type=number],input:not([type]),select{
+  padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#171310;
+  font-size:14px;font-variant-numeric:tabular-nums}
+input:focus,select:focus{outline:0;border-color:var(--org)}
+input.dirty{border-color:var(--yel)}
+label{display:block;font-size:12px;color:var(--dim);margin:11px 0 4px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 
 /* ------------------------------------------------------------------ 按鈕 */
-.btn{padding:10px 16px;border-radius:9px;background:var(--panel2);
-  border:1px solid var(--line);font-size:14px;font-weight:600;transition:background .12s}
+.btn{padding:9px 15px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);
+  font-size:14px;font-weight:600;transition:background .12s}
 .btn:hover{background:#33291f}
 .btn[disabled]{opacity:.4;cursor:not-allowed}
 .btn.primary{background:var(--org);border-color:var(--org);color:#1a1008}
 .btn.primary:hover{background:var(--yel)}
 .btn.sm{padding:6px 11px;font-size:13px;font-weight:500}
 .btn.danger:hover{background:#4a2320;border-color:var(--bad);color:var(--bad)}
-.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn.wide{width:100%;text-align:center}
+.btn.big{width:100%;padding:15px;border-radius:10px;font-size:16px;font-weight:700;color:#1a1008;
+  background:linear-gradient(96deg,var(--red),var(--org) 55%,var(--yel))}
+.btn.big:hover{filter:brightness(1.1)}
+.btn.big[disabled]{background:var(--panel2);color:var(--dim2);filter:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row>.grow{flex:1}
 
-/* ------------------------------------------------------------------ 表單 */
-label{display:block;font-size:12px;color:var(--dim);margin:12px 0 4px}
-input,select{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);
-  background:#171310;font-size:14px}
-input:focus,select:focus{outline:0;border-color:var(--org)}
-.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-
-/* ------------------------------------------------------------------ 預覽 */
-.screen{width:100%;background:#000;border-radius:6px;border:1px solid var(--line);
-  image-rendering:pixelated;display:block}
-.ruler{display:flex;justify-content:space-between;font-size:11px;color:var(--dim2);
-  font-variant-numeric:tabular-nums;margin-top:5px}
-
-/* ------------------------------------------------------------------ 其他 */
+/* ------------------------------------------------------------------ 標籤 · 提示 */
 .tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;
   background:var(--panel2);border:1px solid var(--line);color:var(--dim);
   margin:0 4px 4px 0;font-variant-numeric:tabular-nums}
 .tag.ok{color:var(--ok);border-color:#2d4a2d}
 .tag.bad{color:var(--bad);border-color:#4a2b23}
-.tag.click{cursor:pointer}
-.tag.click:hover{border-color:var(--org)}
-.tag.off{opacity:.35}
-#log{font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#8f8378;
-  white-space:pre-wrap;max-height:230px;overflow:auto;word-break:break-all}
+.tag.hot{color:var(--yel);border-color:#5a4420}
+.warn{border-radius:10px;padding:11px 13px;font-size:13.5px;line-height:1.65;
+  background:#2a1f16;border:1px solid var(--warn);color:#f0dcc0;margin-bottom:12px}
+.warn.bad{background:#2c1a16;border-color:var(--bad);color:#ffd9cf}
+.warn b{color:var(--yel)}
+.warn.bad b{color:var(--bad)}
+.warn+.warn{margin-top:-4px}
 details summary{cursor:pointer;color:var(--dim);font-size:13px;padding:5px 0;
   list-style:none;user-select:none}
 details summary::-webkit-details-marker{display:none}
-details summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+details summary::before{content:"▸ ";display:inline-block}
 details[open] summary::before{content:"▾ "}
-.sep{height:1px;background:var(--line);margin:14px 0}
+#log{font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#8f8378;
+  white-space:pre-wrap;max-height:230px;overflow:auto;word-break:break-all}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:200;
   background:#2b211a;border:1px solid var(--line);border-radius:10px;padding:12px 20px;
   font-size:14px;box-shadow:0 8px 28px #0009;max-width:90vw}
 .toast.bad{border-color:var(--bad);color:var(--bad)}
 .toast.ok{border-color:#2d4a2d}
-.banner{background:#2a1f16;border:1px solid var(--warn);border-radius:var(--r);
-  padding:14px 16px;margin-bottom:16px;font-size:14px;color:#f0dcc0}
-.banner b{color:var(--yel)}
+footer{color:var(--dim2);font-size:12.5px;text-align:center;margin:34px 0 0;line-height:1.8}
 </style>
 </head>
 <body>
 
 <header>
- <div class="wrap hbar">
-  <div class="logo"><i></i>OKAWARI 門頭屏</div>
-  <div class="spacer"></div>
-  <div class="conn"><span class="dot wait" id="dot"></span><span id="connlabel">連線中…</span></div>
-  <button class="btn sm" onclick="toggleSettings()">連線設定</button>
+ <div class="wrap">
+  <div class="hbar">
+    <div class="logo"><i></i><span class="lname">OKAWARI 門頭屏</span></div>
+    <div class="clock"><span id="clock" class="num">--:--</span><small id="weekday"></small></div>
+    <div class="spacer"></div>
+    <div class="conn"><span class="dot wait" id="dot"></span><span id="connlabel">連線中…</span></div>
+    <div class="hact">
+      <button class="btn sm" onclick="doConnect()">連線到卡</button>
+      <button class="btn sm primary" id="pubbtn" onclick="doPublish()">發佈到卡</button>
+      <button class="btn sm" onclick="toggleSettings()">設定</button>
+    </div>
+  </div>
+  <div class="stores" id="storelist"></div>
  </div>
 </header>
 
 <div class="wrap">
 
 <div id="settings" class="panel" style="display:none;margin-top:16px">
-  <h2>後台位置</h2>
-  <p class="hint">這個頁面本身只是介面，真正跟控制卡講話的是「後台」。
-     下面填後台在哪裡。換場地、換網路就改這一格，其他都不用動。</p>
+  <h2 class="head">後台位置</h2>
+  <p class="hint">這個頁面只是遙控器，真正跟控制卡講話的是「後台」。下面填後台在哪裡；
+     換場地、換網路就改這一格，其他都不用動。</p>
   <label>後台網址</label>
   <input id="apibase" placeholder="http://localhost:8080">
   <div class="row" style="margin-top:10px">
@@ -158,125 +234,316 @@ details[open] summary::before{content:"▾ "}
   </div>
   <div class="sep"></div>
   <p class="hint"><b>連不上的時候先看這裡：</b></p>
-  <p class="hint">· 這個頁面走 https、後台走 http 的話，瀏覽器只准連 <code>localhost</code>，
-     區網 IP（192.168.x.x）會被擋掉。要嘛把頁面存到本機用 http 開，
-     要嘛給後台一個 https 網址（見 <code>遠端架構.md</code> 的 Cloudflare Tunnel 那節）。</p>
-  <p class="hint">· 後台沒開 → 先在那台電腦跑 <code>後台.bat</code>。</p>
+  <p class="hint">· 手機、平板不要開 GitHub 網址 —— https 的頁面只准連 <code>localhost</code>，
+     連不了 <code>192.168.x.x</code>。手機請直接開 <code>http://筆電的IP:8080</code>，畫面一模一樣。</p>
+  <p class="hint">· 後台沒開 → 先在那台看得到卡的電腦上跑 <code>後台.bat</code>。</p>
 </div>
 
-<div id="offlinebanner" class="banner" style="display:none">
-  <b>離線預覽模式。</b>現在看到的是排版和畫面預覽，沒有連到任何後台，
-  按鈕不會真的對控制卡做事。要實際操作請按右上角「連線設定」填後台網址。
-</div>
+<div id="banners"></div>
 
-<main>
-<!-- ------------------------------------------------------ 左：門店 -->
-<aside>
+<!-- ------------------------------------------------------ 現在這一段 -->
+<section>
+  <h2 class="head">現在屏上是這一段 <span class="sub" id="nowsub"></span></h2>
+  <div class="now">
+    <div>
+      <div class="screen shotbox" id="nowscreen"></div>
+      <div class="ruler"><span id="prevleft">—</span><span id="prevright"></span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;min-width:0">
+      <div>
+        <span class="nowtag" id="nowtag">—</span>
+        <div class="nowname" id="nowname">—</div>
+        <div class="nowtime num" id="nowtime"></div>
+        <div class="nowdesc" id="nowdesc"></div>
+        <div style="margin-top:11px" id="nowtags"></div>
+      </div>
+      <div class="nowfoot">
+        <div class="row">
+          <button class="btn sm" id="nowplay" onclick="playNow()">重播這一段</button>
+          <button class="btn sm" onclick="loadShot()">抓屏上實際畫面</button>
+          <button class="btn sm" onclick="backToPreview()">回預覽</button>
+        </div>
+        <p class="hint" style="margin-top:9px">
+          畫面換段是卡自己看時鐘做的，筆電不在也會換。這裡的時鐘是<b>你這台裝置</b>的，
+          跟卡上的時鐘可能差幾分鐘。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------ 一天 -->
+<section>
+  <h2 class="head">一天 <span class="sub" id="tlsub"></span></h2>
+  <div class="tl">
+    <div class="tlrow" id="tlmain"></div>
+    <div class="tlrow thin" id="tlpromo"></div>
+    <div class="tlscale" id="tlscale"></div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------ 時段 -->
+<section>
+  <h2 class="head">常駐時段 <span class="sub">改完時間要按「發佈到卡」才會上去</span></h2>
+  <div class="grid" id="segs"></div>
+</section>
+
+<!-- ------------------------------------------------------ 限期活動 -->
+<section>
+  <h2 class="head">限期活動 <span class="sub">設好日期就會自己上、自己下，不用記得回去關</span></h2>
+  <div class="grid" id="promos"></div>
+</section>
+
+<!-- ------------------------------------------------------ 手動 -->
+<section>
+  <h2 class="head">手動觸發 <span class="sub">店員當場按的，不排時段</span></h2>
+  <div class="grid" id="manuals"></div>
+</section>
+
+<!-- ------------------------------------------------------ 這面屏 -->
+<section>
+  <h2 class="head">這面屏</h2>
+
   <div class="panel">
-    <h2>門店</h2>
-    <div id="storelist"></div>
-    <div class="sep"></div>
-    <details>
-      <summary>新增門店</summary>
-      <p class="hint">代號是英文短代號，小寫、不要空格。取了不要改，它會變成檔名前綴。</p>
-      <label>代號</label><input id="nid" placeholder="kaohsiung">
-      <label>店名</label><input id="nname" placeholder="高雄店">
-      <div class="f2">
-        <div><label>畫布寬</label><input id="nw" inputmode="numeric" placeholder="960"></div>
-        <div><label>畫布高</label><input id="nh" inputmode="numeric" placeholder="120"></div>
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <label>營業時間（打烊後卡自己關屏）</label>
+        <div class="times">
+          <input type="time" id="opentime"><span class="to">–</span><input type="time" id="closetime">
+        </div>
       </div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn sm" onclick="addStore()">＋ 建立</button>
+      <div style="align-self:center;padding-top:14px">
+        <label style="margin:0"><input type="checkbox" id="offafter" style="width:auto;vertical-align:-2px">
+          打烊後關屏</label>
       </div>
-    </details>
+      <span class="grow"></span>
+      <button class="btn" onclick="saveSchedule()">套用開關屏時間</button>
+    </div>
+    <p class="hint" style="margin-top:10px">
+      這一組是送進卡裡的 <code>SetSwitchTime</code>，跟上面的時段是兩件事：時段決定「播什麼」，
+      這裡決定「屏亮不亮」。要卡連著才送得進去。</p>
   </div>
 
   <div class="panel">
-    <h2>亮度</h2>
-    <p class="hint" style="margin-bottom:10px">室內建議 40〜60。白天門口有西曬才需要拉到 80 以上。</p>
     <div class="row">
+      <div class="grow">
+        <label style="margin:0">主角</label>
+        <p class="hint">改了要重新發佈才會換。兩個版本的分鏡完全一樣。</p>
+      </div>
+      <div class="row" id="chars"></div>
+    </div>
+    <div class="sep"></div>
+    <label style="margin:0">亮度 <span class="hint">室內 40〜60 就夠，門口有西曬才拉到 80 以上</span></label>
+    <div class="row" style="margin-top:8px">
       <button class="btn sm grow" onclick="bright(30)">30</button>
       <button class="btn sm grow" onclick="bright(50)">50</button>
       <button class="btn sm grow" onclick="bright(80)">80</button>
       <button class="btn sm grow" onclick="bright(100)">100</button>
     </div>
   </div>
-</aside>
 
-<!-- ------------------------------------------------------ 右：控制 -->
-<section>
   <div class="panel">
-    <div class="row" style="align-items:center">
-      <div class="grow">
-        <h2 style="margin:0">目前選擇</h2>
-        <div id="curname" style="font-size:19px;font-weight:700;margin-top:2px">—</div>
-        <div id="curmeta" class="hint"></div>
+    <h2 class="head" style="margin-bottom:8px">這張卡</h2>
+    <div id="cardinfo" class="hint"></div>
+    <div class="sep"></div>
+    <details>
+      <summary>畫面參數（全部門店共用）</summary>
+      <div class="f2">
+        <div><label>漸變跨度 0〜1</label>
+          <input data-p="gradient_window" oninput="markInput(this);drawIdlePreview()"></div>
+        <div><label>顆粒強度</label>
+          <input data-p="dither" oninput="markInput(this);drawIdlePreview()"></div>
+        <div><label>角色高度佔比</label><input data-p="hero_scale" oninput="markInput(this)"></div>
+        <div><label>續碗中獎機率 0〜1</label>
+          <input data-p="okawari_hit_chance" oninput="markInput(this)"></div>
       </div>
-      <button class="btn" onclick="doConnect()">連線到卡</button>
-      <button class="btn primary" id="pubbtn" onclick="doPublish()">發佈到卡</button>
-    </div>
+      <label>續碗中獎文字</label><input data-p="okawari_text" oninput="markInput(this)">
+      <div class="row" style="margin-top:11px">
+        <button class="btn sm" onclick="saveParams()">儲存參數</button>
+      </div>
+    </details>
+    <details>
+      <summary>活動文案（這家店自己的）</summary>
+      <div class="f2">
+        <div><label>買一送一 主標</label>
+          <input data-sp="bogo_text" oninput="markInput(this)" placeholder="BUY 1, GET 1"></div>
+        <div><label>買一送一 日期</label>
+          <input data-sp="bogo_date" oninput="markInput(this)" placeholder="SEP. 1-2"></div>
+      </div>
+      <label>滿額 1000 完成文字</label>
+      <input data-sp="bonus_text" oninput="markInput(this)" placeholder="GOLDEN BOWL UNLOCKED!">
+      <p class="hint" style="margin-top:8px">
+        這幾行字是編進影片裡的，改完要重新發佈才會上屏。<br>
+        兩家店檔期不一樣（中港 9/1–2、小北 9/2–3），所以這一組各店分開存。
+        留空就跟著全域設定走。<br>
+        <b>活動的實際起訖日期</b>在下面「內容」那一區改，設好之後
+        時間到了自己上、過了自己下。
+      </p>
+      <div class="row" style="margin-top:11px">
+        <button class="btn sm" onclick="saveStoreParams()">儲存這家店的文案</button>
+      </div>
+    </details>
+    <div class="sep"></div>
+    <details>
+      <summary>新增門店</summary>
+      <p class="hint">代號用小寫英文、不要空格。取了不要改，它會變成檔名前綴。</p>
+      <div class="f2">
+        <div><label>代號</label><input id="nid" placeholder="kaohsiung"></div>
+        <div><label>店名</label><input id="nname" placeholder="高雄店"></div>
+        <div><label>畫布寬</label><input id="nw" inputmode="numeric" placeholder="960"></div>
+        <div><label>畫布高</label><input id="nh" inputmode="numeric" placeholder="120"></div>
+      </div>
+      <div class="row" style="margin-top:11px">
+        <button class="btn sm" onclick="addStore()">＋ 建立</button>
+      </div>
+    </details>
+    <div class="sep"></div>
+    <details>
+      <summary>把卡上的節目全部清掉</summary>
+      <p class="hint">卡上的節目堆太多會讓發佈失敗。清完要重新發佈才有畫面。</p>
+      <button class="btn sm danger" style="margin-top:8px" onclick="doWipe()">清空卡上節目</button>
+    </details>
   </div>
 
   <div class="panel">
-    <h2>畫面預覽</h2>
-    <canvas id="prev" class="screen"></canvas>
-    <div class="ruler"><span id="prevleft">—</span><span id="prevright"></span></div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn sm" id="livebtn" onclick="toggleLive()">播放待機畫面</button>
-      <button class="btn sm" onclick="loadShot()">抓屏上實際畫面</button>
-    </div>
-    <p class="hint" style="margin-top:8px">
-      預覽是照 <code>artwork.py</code> 的同一套公式在瀏覽器裡重畫的待機漸層，
-      改完參數不必發佈就能先看。抓實際畫面對影片內容會是全黑，那是卡的限制不是壞掉。</p>
-  </div>
-
-  <div id="features" class="grid"></div>
-
-  <div class="panel">
-    <h2>紀錄</h2>
+    <h2 class="head" style="margin-bottom:8px">紀錄</h2>
     <div id="log">—</div>
   </div>
 </section>
-</main>
 
-<p class="hint" style="margin:30px 0 10px;text-align:center">
+<footer>
   介面部署在 GitHub Pages，後台跑在店裡那台看得到控制卡的機器上。<br>
-  為什麼要這樣分，以及斷線時怎麼辦，寫在專案的 <code>遠端架構.md</code>。
-</p>
+  操作步驟在 <code>怎麼用.md</code>，為什麼要這樣分在 <code>遠端架構.md</code>。<br>
+  <a href="preview.html">客戶提案頁</a> · <a href="舊版/控制台_v1_20260810.html">舊版控制台</a>
+</footer>
 </div>
 
 <script>
 /* ==================================================================
-   OKAWARI 門頭屏 · 控制台前端
+   OKAWARI 門頭屏 · 控制台 v2 前端
 
-   這支是純靜態頁面，可以直接放 GitHub Pages。
-   它自己不認得控制卡，所有動作都是打 API 給「後台」，
-   後台才是那台看得到卡的機器。所以後台位置要能改，存在 localStorage。
+   純靜態頁面，同一份檔案同時給 GitHub Pages 和後台端出去。
+   自己不認得控制卡，所有動作都是打 API 給後台。
+
+   v1 → v2 改的是「以什麼為主」：
+     v1  三個功能各一張卡，人按按鈕才有畫面
+     v2  一天的時段是主體。卡自己按時鐘換段，這裡是看它換得對不對、
+         哪裡沒排到，以及要改時段時改哪一格
+
+   時段的判斷邏輯跟後台的 schedule.py 一比一對應（is_active／coverage_gaps／
+   overlaps）。兩邊都算是刻意的 —— 頁面要在後台沒開的時候也能講出
+   「現在該播哪一段」，不能每件事都問後台。
    ================================================================== */
 
 const $ = id => document.getElementById(id);
+
 let BASE = localStorage.getItem('okawari_api');
 if (BASE === null) BASE = guessBase();
-let D = null;              // 後台回來的整包資料
+let D = null;                                        // 後台回來的整包
 let SEL = localStorage.getItem('okawari_store') || '';
-let ONLINE = false;
-let BUSY = false;
+let ONLINE = false, BUSY = false;
+let SHOT = false;                                    // 大預覽現在是不是「從卡上抓回來的畫面」
+let DIRTY = new Set(JSON.parse(localStorage.getItem('okawari_dirty') || '[]'));
 
-/* 第一次開的時候猜一個合理的後台位置：
-   從後台自己端出來的話用同一個 origin，從 GitHub Pages 開的話用 localhost。 */
+/* 第一次開的時候猜後台在哪：從後台自己端出來的話用同一個 origin，
+   從 GitHub Pages 開的話只能是 localhost（https 頁面連不了區網 IP）。 */
 function guessBase(){
   if (location.protocol === 'file:') return 'http://localhost:8080';
   if (location.hostname.endsWith('github.io')) return 'http://localhost:8080';
   return location.origin;
 }
 
+/* ---------------------------------------------------------------- 內容資料
+   每個內容代號長什麼樣、講什麼故事、在時間軸上用什麼顏色。
+   名稱優先用 stores.json 裡的 name，這裡是後備。
+   有 video 的四段可以直接放 docs/preview/ 那批實際輸出檔 ——
+   那是真的編出來、給客戶看的同一份影片，不是網頁特效。 */
+const META = {
+  opening: {label:'開店', title:'布簾拉開，新的一天', color:'#e23a2e', video:true,
+    desc:'主角睡醒伸個懶腰，沿著一路亮起來的飯粒走過去，走到那碗飯前面舉手歡呼。'},
+  noon: {label:'中午', title:'今天也要好好吃飯', color:'#e8532e', video:true,
+    desc:'端著剛盛好的飯慢慢走過，熱氣一直往上冒。尖峰時段，畫面保持溫熱、不吵。'},
+  siesta: {label:'午後', title:'午後發呆 Zzz', color:'#f07818', video:true,
+    desc:'沒什麼客人的時段，主角乾脆躺在飯上睡著了，偶爾翻個身。這段刻意最慢。'},
+  evening: {label:'晚間', title:'今天辛苦了，吃飯吧', color:'#f7b32b', video:true,
+    desc:'下班時間。放下公事包、坐下來、把飯端起來。給的是「可以休息了」，不是促銷。'},
+  idle: {label:'待機底', title:'紅→黃漸層', color:'#8a5a3a', canvas:true,
+    desc:'角色美術之外的墊檔。四段常駐上線之後預設停用，要回頭當底就把它打開。'},
+  promo_open: {label:'開幕', title:'飯迎光臨', color:'#c8452e',
+    desc:'角色從左右跑進來，紙花噴一下「飯迎光臨 OKAWARI START！」'},
+  promo_bogo: {label:'買一送一', title:'BUY 1 GET 1', color:'#c8452e',
+    desc:'一碗丼飯出現 →「+1」→ 第二碗滑進來。'},
+  promo_egg: {label:'加價購', title:'10 元溫泉蛋', color:'#c8452e',
+    desc:'把蛋打進飯碗裡 → 10 元升級。'},
+  okawari: {label:'續碗', title:'店員按的那一下', color:'#f7b32b',
+    desc:'擲骰決定中不中。中了才劈石、才閃「おかわり おめでとう!」——'
+        +'預錄影片沒有隨機性，所以骰子在後台擲，兩支影片各切一支。'},
+  patrol: {label:'巡迴', title:'（已停用）勇者追壞人', color:'#6f625b',
+    desc:'2026-08-17 業主確認不用勇者。'},
+};
+function meta(k){ return META[k] || {label:k, title:k, color:'#8a5a3a', desc:''}; }
+
+const WEEKDAYS = ['Mon','Tue','Wed','Thur','Fri','Sat','Sun'];
+const WEEK_TW = ['一','二','三','四','五','六','日'];
+
+/* ---------------------------------------------------------------- 時間工具
+   全部用「當天的第幾分鐘」算，跟 schedule.py 的秒數是同一套思路。 */
+function toMin(s){
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(s == null ? '' : s).trim());
+  if (!m) return null;
+  const h = +m[1], mi = +m[2];
+  return (h >= 0 && h <= 23 && mi >= 0 && mi <= 59) ? h*60 + mi : null;
+}
+function hhmm(n){
+  n = ((Math.round(n) % 1440) + 1440) % 1440;
+  return String(n/60|0).padStart(2,'0') + ':' + String(n%60).padStart(2,'0');
+}
+function span(n){
+  n = Math.max(0, Math.round(n));
+  const h = n/60|0, m = n%60;
+  return (h ? h + ' 小時' : '') + (m || !h ? (h ? ' ' : '') + m + ' 分' : '');
+}
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+       + '-' + String(d.getDate()).padStart(2,'0');
+}
+function nowMin(){ const d = new Date(); return d.getHours()*60 + d.getMinutes(); }
+function weekIdx(){ return (new Date().getDay() + 6) % 7; }   // 0 = 週一
+
+/* 這三個對應 schedule.py 的 in_time_window / in_date_window / in_week */
+function inTime(when, n){
+  const t = (when || {}).time || [];
+  if (t.length < 2) return true;
+  const a = toMin(t[0]), b = toMin(t[1]);
+  if (a === null || b === null) return true;
+  return a <= b ? (a <= n && n < b) : (n >= a || n < b);   // 後者是跨午夜
+}
+function inDate(when){
+  const d = (when || {}).date || [];
+  if (!d.length) return true;
+  const t = todayISO();
+  if (d[0] && t < d[0]) return false;
+  if (d[1] && t > d[1]) return false;
+  return true;
+}
+function inWeek(when){
+  const w = (when || {}).week;
+  if (!w) return true;
+  return String(w).split(',').map(s => s.trim()).filter(Boolean)
+         .includes(WEEKDAYS[weekIdx()]);
+}
+function isActive(c, n){
+  return !!c.enabled && c.trigger !== 'manual'
+      && inTime(c.when, n) && inDate(c.when) && inWeek(c.when);
+}
+
 /* ---------------------------------------------------------------- API */
 async function api(path, body){
   if (!BASE) throw new Error('OFFLINE');
   const opt = {cache:'no-store'};
-  if (body){ opt.method='POST'; opt.body=JSON.stringify(body); }
+  if (body){ opt.method = 'POST'; opt.body = JSON.stringify(body); }
   const ctl = new AbortController();
-  const kill = setTimeout(()=>ctl.abort(), 180000);   // 發佈會跑很久
+  const kill = setTimeout(() => ctl.abort(), 180000);      // 發佈會跑很久
   opt.signal = ctl.signal;
   try{
     const r = await fetch(BASE.replace(/\/$/,'') + path, opt);
@@ -288,10 +555,29 @@ async function api(path, body){
 
 function toast(msg, kind){
   const t = document.createElement('div');
-  t.className = 'toast ' + (kind||'');
+  t.className = 'toast ' + (kind || '');
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(), kind==='bad' ? 6000 : 2600);
+  setTimeout(() => t.remove(), kind === 'bad' ? 7000 : 2600);
+}
+
+/* 舊版後台沒有 set_when／set_schedule 這兩支。錯誤訊息要講清楚是後台要更新，
+   不然看起來像「存了但沒反應」。 */
+function apiErr(e, label){
+  const m = String(e.message || e);
+  if (/不認得的 API/.test(m))
+    return toast(label + '失敗：後台是舊版。更新 後台/server.py 之後重開 後台.bat', 'bad');
+  toast(label + '失敗：' + m, 'bad');
+}
+
+function markDirty(){
+  DIRTY.add(SEL);
+  localStorage.setItem('okawari_dirty', JSON.stringify([...DIRTY]));
+  drawBanners(); drawPubBtn();
+}
+function clearDirty(){
+  DIRTY.delete(SEL);
+  localStorage.setItem('okawari_dirty', JSON.stringify([...DIRTY]));
 }
 
 /* ---------------------------------------------------------------- 設定 */
@@ -309,173 +595,689 @@ function saveBase(){
   refresh();
 }
 
-/* ---------------------------------------------------------------- 內容定義
-   每個功能底下要出現哪些可調參數。跟 artwork.py 的 DEFAULT_PARAMS 對應。 */
-const FEATURES = [
-  {key:'idle', name:'待機畫布', desc:'紅→黃漸層，無縫循環。沒事就播這個。', fields:[
-    ['idle_scroll','漸層跑動（一輪跑幾趟，0 = 不跑、只在原地慢慢變色）'],
-    ['idle_seconds','長度（秒）'],
-    ['idle_fps','每秒幾格'],
-    ['gradient_window','漸變跨度 0〜1（越小顏色跨度越窄）'],
-    ['dither','顆粒強度（0 = 完全乾淨，但容易出色帶）'],
-  ]},
-  {key:'patrol', name:'整點巡迴', desc:'勇者追著壞人跑過畫面，兩個同時在畫面上。', fields:[
-    ['patrol_every_minutes','自動觸發間隔（分鐘，0 = 不自動）'],
-    ['patrol_seconds','長度（秒）'],
-    ['patrol_fps','每秒幾格'],
-    ['patrol_gap','勇者落後壞人的距離'],
-  ]},
-  {key:'okawari', name:'續碗促銷', desc:'擲骰決定中獎。中了才劈石、才出字。', fields:[
-    ['okawari_text','中獎文字'],
-    ['okawari_hit_chance','中獎機率 0〜1'],
-    ['okawari_seconds','長度（秒）'],
-    ['okawari_fps','每秒幾格'],
-    ['okawari_stone','石頭位置 0〜1'],
-  ]},
-];
-
-/* ---------------------------------------------------------------- 離線示範資料 */
+/* ---------------------------------------------------------------- 離線示範
+   後台沒開也要能看排版、能給人解釋這個介面在幹嘛，所以放一份跟
+   stores.json 同構的假資料。卡的 MAC、密碼這些不放。 */
 const DEMO = {
-  offline: true,
-  connected: null, card_ip: null,
-  params: {idle_seconds:30, idle_fps:2, idle_scroll:0, patrol_every_minutes:0,
-    patrol_seconds:12, patrol_fps:25, okawari_seconds:8, okawari_fps:25,
-    okawari_hit_chance:0.25, patrol_gap:30, okawari_stone:0.55,
-    gradient_window:0.72, dither:0.22, hero_scale:0.72,
-    okawari_text:'おかわり おめでとう!'},
-  stores: [
+  offline:true, connected:null, card_ip:null,
+  params:{opening_seconds:14, opening_fps:25, noon_seconds:16, noon_fps:25,
+    siesta_seconds:20, siesta_fps:12, evening_seconds:16, evening_fps:25,
+    idle_seconds:30, idle_fps:2, okawari_seconds:8, okawari_fps:25,
+    okawari_hit_chance:0.25, okawari_text:'おかわり おめでとう!',
+    gradient_window:0.72, dither:0.22, hero_scale:0.72, character:'ricebowl'},
+  stores:[
     {id:'test', name:'測試版（公司測試卡）', canvas:{width:160,height:40},
-     mirror:{of:'tainan',align:'center'}, published:{idle:{},patrol:{},okawari:{}},
-     contents:[{key:'idle',enabled:true},{key:'patrol',enabled:true},{key:'okawari',enabled:true}]},
+     mirror:{of:'tainan',align:'center'},
+     schedule:{open:'11:00', close:'22:30', screen_off_after_close:true},
+     published:{opening:{seconds:14},noon:{seconds:16},siesta:{seconds:20},
+                evening:{seconds:16},okawari:{seconds:8}},
+     contents:demoContents()},
     {id:'tainan', name:'台南店', canvas:{width:960,height:120},
-     contents:[{key:'idle',enabled:true},{key:'patrol',enabled:true},{key:'okawari',enabled:true}]},
+     schedule:{open:'11:00', close:'22:30', screen_off_after_close:true},
+     contents:demoContents()},
     {id:'taichung', name:'台中店', canvas:{width:1040,height:120},
-     contents:[{key:'idle',enabled:true},{key:'patrol',enabled:true},{key:'okawari',enabled:true}]},
+     schedule:{open:'11:00', close:'22:30', screen_off_after_close:true},
+     contents:demoContents()},
   ],
-  log: ['（離線預覽，沒有真的紀錄）'],
+  log:['（離線預覽，沒有真的紀錄）'],
 };
+function demoContents(){
+  return [
+    {key:'idle', name:'待機底（紅→黃漸層）', enabled:false, when:{time:['11:00','22:30']}},
+    {key:'opening', name:'開店畫面', enabled:true, when:{time:['11:00','11:30']}},
+    {key:'noon', name:'今天也要好好吃飯', enabled:true, when:{time:['11:30','14:00']}},
+    {key:'siesta', name:'午後發呆 Zzz', enabled:true, when:{time:['14:00','17:30']}},
+    {key:'evening', name:'今天辛苦了，吃飯吧', enabled:true, when:{time:['17:30','22:30']}},
+    {key:'promo_open', name:'開幕：飯迎光臨', enabled:false, art:'pending',
+     when:{time:['11:00','11:30'], date:['2026-09-01','2026-09-30']}},
+    {key:'promo_bogo', name:'9/1-2 買一送一', enabled:false, art:'pending',
+     when:{time:['11:00','22:30'], date:['2026-09-01','2026-09-02']}},
+    {key:'promo_egg', name:'10元溫泉蛋加價購', enabled:false, art:'pending',
+     when:{time:['11:00','22:30'], date:['2026-09-01','2026-09-30']}},
+    {key:'okawari', name:'續碗', enabled:true, trigger:'manual'},
+  ];
+}
 
-/* ---------------------------------------------------------------- 主更新 */
+/* ---------------------------------------------------------------- 取資料 */
+function cur(){ return (D.stores || []).find(s => s.id === SEL) || {}; }
+function contents(){ return cur().contents || []; }
+function sched(){ return cur().schedule || {}; }
+function openMin(){ return toMin(sched().open) === null ? 11*60 : toMin(sched().open); }
+function closeMin(){ return toMin(sched().close) === null ? 22*60+30 : toMin(sched().close); }
+function character(){ return ((D.params || {}).character) || 'person'; }
+function published(k){ return (cur().published || {})[k]; }
+
+/* 常駐（會排時段的）／限期活動（有 date 的）／手動 */
+function residents(){ return contents().filter(c => c.trigger !== 'manual' && !((c.when||{}).date)); }
+function promoItems(){ return contents().filter(c => c.trigger !== 'manual' && ((c.when||{}).date)); }
+function manualItems(){ return contents().filter(c => c.trigger === 'manual'); }
+
+/* 現在該播哪一段。正常剛好一個；空的＝這個時間屏上沒東西，多個＝時段疊到了。 */
+function activeNow(){
+  const n = nowMin();
+  return contents().filter(c => isActive(c, n));
+}
+
+/* 下一個「畫面會變」的時間點。所有啟用時段的頭尾都算，取現在之後最近的一個。 */
+function nextChange(){
+  const n = nowMin(), pts = [];
+  for (const c of contents()){
+    if (!c.enabled || c.trigger === 'manual' || !inDate(c.when) || !inWeek(c.when)) continue;
+    const t = (c.when || {}).time || [];
+    for (const x of t){ const v = toMin(x); if (v !== null) pts.push(v); }
+  }
+  pts.push(openMin(), closeMin());
+  const after = pts.filter(v => v > n).sort((a,b) => a-b);
+  return after.length ? after[0] : null;
+}
+
+/* 營業時間裡有沒有哪一段沒人顧。對應 schedule.py 的 coverage_gaps。 */
+function gaps(){
+  const a = openMin(), b = closeMin();
+  if (a >= b) return [];
+  const sp = [];
+  for (const c of residents()){
+    if (!c.enabled) continue;
+    const t = (c.when || {}).time || [];
+    if (t.length < 2) return [];                      // 有全天候的內容，不可能有空隙
+    const s = toMin(t[0]), e = toMin(t[1]);
+    if (s !== null && e !== null && s < e) sp.push([Math.max(s,a), Math.min(e,b)]);
+  }
+  sp.sort((x,y) => x[0]-y[0]);
+  const out = []; let cur = a;
+  for (const [s,e] of sp){ if (s > cur) out.push([cur, s]); cur = Math.max(cur, e); }
+  if (cur < b) out.push([cur, b]);
+  return out.filter(g => g[1] > g[0]);
+}
+
+/* 有沒有兩段疊在一起。疊到的話卡會兩個輪流播 —— 看起來像畫面在鬼打牆。 */
+function overlaps(){
+  const items = [];
+  for (const c of residents()){
+    if (!c.enabled) continue;
+    const t = (c.when || {}).time || [];
+    if (t.length < 2) continue;
+    const s = toMin(t[0]), e = toMin(t[1]);
+    if (s !== null && e !== null && s < e) items.push([s, e, c.key]);
+  }
+  items.sort((x,y) => x[0]-y[0]);
+  const out = [];
+  for (let i = 0; i < items.length-1; i++)
+    if (items[i][1] > items[i+1][0])
+      out.push([items[i][2], items[i+1][2], items[i+1][0], items[i][1]]);
+  return out;
+}
+
+function esc(s){ return String(s == null ? '' : s)
+  .replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function name(c){ return c.name || meta(c.key).title; }
+function videoSrc(key){
+  return meta(key).video ? ('preview/' + key + '_' + character() + '.mp4') : null;
+}
+
+/* ================================================================
+   畫面
+   ================================================================ */
 async function refresh(){
   if (BUSY) return;
   let ok = false;
-  try {
-    D = await api('/api/stores');
-    ok = true;
-  } catch(e) {
-    D = DEMO;
-  }
+  try { D = await api('/api/stores'); ok = true; } catch(e) { D = DEMO; }
   ONLINE = ok;
-  $('offlinebanner').style.display = ok ? 'none' : 'block';
+
+  if (!D.stores.some(s => s.id === SEL)) SEL = (D.stores[0] || {}).id || '';
+
   $('dot').className = 'dot ' + (ok ? (D.connected ? 'on' : 'wait') : 'off');
   $('connlabel').textContent = !ok ? '後台未連線'
-    : D.connected ? ('卡已連線 · ' + D.card_ip)
+    : D.connected ? ('卡已連線 · ' + D.card_ip + (D.reverse ? '（卡撥回來的）' : ''))
     : '後台在，卡未連線';
 
-  if (!D.stores.some(s => s.id === SEL)) SEL = (D.stores[0]||{}).id || '';
-  drawStores();
-  drawCurrent();
-  drawFeatures();
-  $('log').textContent = (D.log||[]).join('\n') || '—';
+  drawClock(); drawStores(); drawBanners(); drawPubBtn();
+  drawNow(); drawTimeline(); drawSegs(); drawPromos(); drawManuals(); drawDevice();
+  $('log').textContent = (D.log || []).join('\n') || '—';
+}
 
-  // 每次更新都重畫預覽。不能只靠 live 的動畫迴圈 —— 瀏覽器切到別的分頁時
-  // requestAnimationFrame 會停掉，回來時畫布還停在上一家店的尺寸。
-  // 除非現在畫的是抓回來的實際畫面，那就別蓋掉。
-  if (mode === 'preview') drawPreview(phase);
+/* 卡片列表不能每次 refresh 都重畫 ——
+   裡面有 autoplay 的預覽影片（重畫會從頭跳一次），也有正在打字的時間欄。
+   所以先算一個指紋，內容真的變了才重畫。 */
+const SIG = {};
+function changed(name, obj){
+  const s = JSON.stringify(obj);
+  if (SIG[name] === s) return false;
+  SIG[name] = s;
+  return true;
+}
+/* 有人正在輸入格裡打字（或改了還沒存）就先不要重畫，不然會把字吃掉。 */
+function editing(){
+  const a = document.activeElement;
+  if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return true;
+  return !!document.querySelector('input.dirty');
+}
+
+function drawClock(){
+  const d = new Date();
+  $('clock').textContent = hhmm(d.getHours()*60 + d.getMinutes());
+  $('weekday').textContent = '週' + WEEK_TW[weekIdx()];
 }
 
 function drawStores(){
-  $('storelist').innerHTML = D.stores.map(s => {
-    const c = s.canvas||{};
-    const pubn = Object.keys(s.published||{}).length;
-    const st = pubn
-      ? `<span class="tag ok st">已發佈</span>`
-      : `<span class="tag st">未發佈</span>`;
-    return `<button class="storeitem ${s.id===SEL?'sel':''}" onclick="pick('${s.id}')">
-      ${st}<b>${esc(s.name)}</b>
-      <span>${c.width ? c.width+'×'+c.height : '畫布未定'}${s.mirror?' · 鏡像自 '+s.mirror.of:''}</span>
-    </button>`;
+  $('storelist').innerHTML = (D.stores || []).map(s => {
+    const c = s.canvas || {};
+    const pub = Object.keys(s.published || {}).length;
+    return `<button class="chip ${s.id===SEL?'sel':''}" onclick="pick('${s.id}')">
+      <b>${esc(s.name)}</b><span class="num">${c.width ? c.width+'×'+c.height : '畫布未定'}`
+      + (pub ? '' : ' · 未發佈') + (DIRTY.has(s.id) ? ' · 有改動' : '') + `</span></button>`;
   }).join('');
 }
 
-function cur(){ return (D.stores||[]).find(s => s.id === SEL) || {}; }
-
-function drawCurrent(){
-  const s = cur(), c = s.canvas||{};
-  $('curname').textContent = s.name || '—';
-  const bits = [];
-  if (c.width) bits.push(c.width + ' × ' + c.height + ' 像素');
-  if (s.mirror) bits.push('鏡像自 ' + s.mirror.of + '（' + s.mirror.align + ' 對齊）');
-  const netmap = {'4g-router':'4G 路由器','none':'沒有對外網路','lan':'店內網路'};
-  if (s.network) bits.push(netmap[s.network.uplink] || s.network.uplink);
-  $('curmeta').textContent = bits.join(' · ');
-  $('pubbtn').disabled = !ONLINE;
+function drawPubBtn(){
+  const b = $('pubbtn');
+  b.disabled = !ONLINE || BUSY;
+  b.textContent = DIRTY.has(SEL) ? '發佈到卡 ●' : '發佈到卡';
+  b.title = DIRTY.has(SEL) ? '有改過設定還沒發佈' : '';
 }
 
-function drawFeatures(){
-  const s = cur(), pub = s.published||{}, P = D.params||{};
-  $('features').innerHTML = FEATURES.filter(f =>
-    (s.contents||[]).some(c => c.key===f.key && c.enabled)
-  ).map(f => {
-    const ready = !!pub[f.key];
-    return `<div class="feat">
-      <h3>${f.name}</h3>
-      <div class="desc">${f.desc}</div>
-      <button class="trigger" ${(!ready||!ONLINE)?'disabled':''}
-        onclick="trigger('${f.key}')">${ready?'▶ 播放':'尚未發佈'}</button>
-      <details style="margin-top:12px">
-        <summary>參數</summary>
-        ${f.fields.map(([k,lab]) =>
-          `<label>${lab}</label><input data-g="${f.key}" data-p="${k}"
-             value="${P[k]!==undefined?esc(String(P[k])):''}"
-             oninput="if('${k}'.startsWith('idle')||'${k}'=='gradient_window'||'${k}'=='dither')drawPreview(phase)">`
-        ).join('')}
-        <div class="row" style="margin-top:12px">
-          <button class="btn sm" onclick="saveGroup('${f.key}')">儲存參數</button>
+/* 頁面最上面的警告。這裡只放「現在就會出事」的，不放待辦。 */
+function drawBanners(){
+  const out = [];
+  if (!ONLINE) out.push(`<div class="warn"><b>離線預覽模式。</b>
+    現在看到的是排版與時段推算（照這台裝置的時鐘算），沒有連到任何後台，
+    按鈕不會對控制卡做事。要實際操作按右上角「設定」填後台網址。</div>`);
+
+  const act = activeNow(), n = nowMin();
+  const closed = n < openMin() || n >= closeMin();
+
+  if (!closed && act.length === 0) out.push(`<div class="warn bad">
+    <b>現在這個時間沒有排任何畫面。</b>屏上會是空的。
+    下面「一天」那條裡的斜線區段就是漏掉的時間，把相鄰時段拉過去補起來。</div>`);
+
+  const ov = overlaps();
+  if (ov.length) out.push(`<div class="warn bad"><b>時段疊在一起了。</b>` +
+    ov.map(o => `${esc(meta(o[0]).label)} 和 ${esc(meta(o[1]).label)} 在
+      ${hhmm(o[2])}–${hhmm(o[3])} 重疊`).join('；') +
+    `。卡會把疊到的兩段輪流播，看起來像畫面在鬼打牆。</div>`);
+
+  const g = gaps();
+  if (g.length) out.push(`<div class="warn"><b>營業時間有 ${g.length} 段沒排到：</b>` +
+    g.map(x => `<span class="num">${hhmm(x[0])}–${hhmm(x[1])}</span>`).join('、') + `。</div>`);
+
+  const notPub = residents().filter(c => c.enabled && !published(c.key));
+  if (ONLINE && notPub.length) out.push(`<div class="warn">
+    <b>${notPub.length} 段還沒發佈到卡：</b>` +
+    notPub.map(c => esc(meta(c.key).label)).join('、') +
+    `。卡上沒有這些節目，時間到了也不會播。按右上角「發佈到卡」。</div>`);
+
+  if (DIRTY.has(SEL) && ONLINE) out.push(`<div class="warn">
+    <b>改過設定還沒發佈。</b>時段、秒數、主角這些是編進節目裡的，
+    存在後台不等於卡知道 —— 要按「發佈到卡」重編一次。</div>`);
+
+  $('banners').innerHTML = out.join('');
+}
+
+/* ---------------------------------------------------------------- 現在這一段 */
+function drawNow(){
+  const act = activeNow(), n = nowMin();
+  const closed = n < openMin() || n >= closeMin();
+  const c = act[0];
+  const nx = nextChange();
+
+  $('nowsub').textContent = nx !== null
+    ? ('下一次換畫面 ' + hhmm(nx) + '（' + span(nx - n) + '後）') : '';
+
+  if (closed){
+    $('nowtag').className = 'nowtag dark';
+    $('nowtag').textContent = sched().screen_off_after_close ? '打烊 · 屏已關' : '非營業時間';
+    $('nowname').textContent = '休息中';
+    $('nowtime').textContent = '營業 ' + hhmm(openMin()) + '–' + hhmm(closeMin());
+    $('nowdesc').textContent = sched().screen_off_after_close
+      ? '打烊後由卡自己關屏，這段時間屏是暗的。'
+      : '沒有設打烊關屏，所以屏還亮著，只是沒有排內容。';
+  } else if (!c){
+    $('nowtag').className = 'nowtag dark';
+    $('nowtag').textContent = '沒排到';
+    $('nowname').textContent = '這個時間沒有畫面';
+    $('nowtime').textContent = '';
+    $('nowdesc').textContent = '沒有任何啟用的時段涵蓋現在。屏上會是空的。';
+  } else {
+    const t = (c.when || {}).time || [];
+    const m = meta(c.key);
+    $('nowtag').className = 'nowtag';
+    $('nowtag').textContent = m.label + (act.length > 1 ? ' · 和另外 ' + (act.length-1) + ' 段疊到' : '');
+    $('nowname').textContent = name(c);
+    $('nowtime').textContent = t.length >= 2
+      ? (t[0] + ' – ' + t[1] + '　剩 ' + span((toMin(t[1]) - n + 1440) % 1440)) : '全時段';
+    $('nowdesc').textContent = m.desc || '';
+  }
+
+  const key = closed ? null : (c ? c.key : null);
+  const pub = key ? published(key) : null;
+  const P = D.params || {};
+  const tags = [];
+  if (key){
+    tags.push(pub ? '<span class="tag ok">已發佈到卡</span>' : '<span class="tag bad">未發佈</span>');
+    if (P[key + '_seconds']) tags.push(`<span class="tag num">${P[key+'_seconds']} 秒</span>`);
+    if (P[key + '_fps']) tags.push(`<span class="tag num">${P[key+'_fps']} fps</span>`);
+    if (pub && pub.file) tags.push(`<span class="tag num">${esc(pub.file)}</span>`);
+    tags.push(`<span class="tag">主角 ${character()==='ricebowl'?'小飯碗':'人物'}</span>`);
+  }
+  $('nowtags').innerHTML = tags.join('');
+  $('nowplay').disabled = !ONLINE || !pub;
+  $('nowplay').dataset.key = key || '';
+
+  showScreen(key);
+}
+
+/* 大預覽。四段有實際輸出影片就播影片，待機底用瀏覽器重算漸層，
+   其餘（活動、續碗）還沒有美術，就老實說沒有。 */
+function showScreen(key){
+  if (SHOT) return;                                  // 正在看抓回來的實際畫面，別蓋掉
+  const box = $('nowscreen');
+  const m = key ? meta(key) : {};
+  if (key && m.video){
+    const src = videoSrc(key);
+    if (box.dataset.src !== src){
+      box.dataset.src = src;
+      box.innerHTML = `<video src="${src}" autoplay loop muted playsinline
+        onerror="this.parentNode.innerHTML='<div style=&quot;padding:26px;text-align:center;color:#6f625b;font-size:13px&quot;>找不到預覽影片 ${esc(src)}</div>'"></video>`;
+    }
+    $('prevleft').textContent = '實際輸出檔預覽 · ' + m.label;
+    $('prevright').textContent = '台南 960×120 的那一份';
+  } else if (key === 'idle'){
+    box.dataset.src = 'idle';
+    box.innerHTML = '<canvas id="prev" class="screen" style="border:0"></canvas>';
+    drawIdlePreview();
+  } else {
+    box.dataset.src = 'none';
+    box.innerHTML = `<div style="padding:34px 16px;text-align:center;color:#6f625b;font-size:13px">`
+      + (key ? '這一段還沒有預覽影片' : '現在沒有畫面') + `</div>`;
+    $('prevleft').textContent = '—';
+    $('prevright').textContent = '';
+  }
+}
+
+/* ---------------------------------------------------------------- 一天 */
+function drawTimeline(){
+  const a = openMin(), b = closeMin(), total = Math.max(1, b - a);
+  const n = nowMin();
+
+  // 常駐那一列：照時間順序排，中間沒排到的塞斜線塊。
+  const on = [], off = [];
+  for (const c of residents()){
+    const t = (c.when || {}).time || [];
+    const s = toMin(t[0]), e = toMin(t[1]);
+    if (s === null || e === null || s >= e) continue;
+    const seg = {key:c.key, s:Math.max(s,a), e:Math.min(e,b)};
+    if (seg.e > seg.s) (c.enabled ? on : off).push(seg);
+  }
+  on.sort((x,y) => x.s - y.s);
+
+  let html = '', cur = a;
+  for (const seg of on){
+    if (seg.s > cur) html += block('gap', cur, seg.s, total, '沒排', '');
+    const m = meta(seg.key);
+    html += block('', Math.max(cur, seg.s), seg.e, total, m.label,
+      `background:linear-gradient(90deg,${m.color},${m.color}dd)`, seg.key);
+    cur = Math.max(cur, seg.e);
+  }
+  if (cur < b) html += block('gap', cur, b, total, '沒排', '');
+  if (!html) html = `<div class="empty" style="flex:1;color:#6f625b;font-size:12.5px">
+    沒有啟用任何常駐時段</div>`;
+
+  // 現在幾點的那條線。打烊時間之外就不畫，畫了會貼在邊上看不懂。
+  if (n >= a && n <= b)
+    html += `<div class="tlnow" style="left:${((n-a)/total*100).toFixed(2)}%"></div>`;
+  $('tlmain').innerHTML = html;
+
+  // 活動那一列：只畫今天有效的（日期到了的），過期的不佔位置。
+  const pr = promoItems().filter(c => c.enabled && inDate(c.when) && inWeek(c.when));
+  let ph = '', pc = a;
+  for (const c of pr.map(c => {
+      const t = (c.when || {}).time || [];
+      return {key:c.key, s:Math.max(toMin(t[0]) ?? a, a), e:Math.min(toMin(t[1]) ?? b, b)};
+    }).sort((x,y) => x.s - y.s)){
+    if (c.s > pc) ph += `<div class="empty" style="flex:${c.s-pc}"></div>`;
+    ph += block('promo', c.s, c.e, total, meta(c.key).label, '', c.key);
+    pc = Math.max(pc, c.e);
+  }
+  if (!ph) ph = `<div class="empty" style="flex:1;color:#6f625b;font-size:11.5px;
+    display:flex;align-items:center;justify-content:center">今天沒有限期活動</div>`;
+  else if (pc < b) ph += `<div class="empty" style="flex:${b-pc}"></div>`;
+  $('tlpromo').innerHTML = ph;
+
+  // 刻度：頭尾一定要有，中間每兩小時一格
+  const ticks = [hhmm(a)];
+  for (let t = Math.ceil(a/120)*120; t < b; t += 120) if (t > a) ticks.push(hhmm(t));
+  ticks.push(hhmm(b));
+  $('tlscale').innerHTML = ticks.map(t => `<div class="num">${t}</div>`).join('');
+
+  const g = gaps();
+  $('tlsub').textContent = '營業 ' + hhmm(a) + '–' + hhmm(b)
+    + (g.length ? '　·　有 ' + g.length + ' 段沒排到' : '　·　排滿了');
+}
+
+function block(cls, s, e, total, label, style, key){
+  const w = Math.max(0, e - s);
+  const long = w / total > 0.06;                    // 太窄就不寫字，寫了也是被裁掉
+  return `<div class="${cls}" style="flex:${w};${style}"
+    ${key ? `onclick="focusSeg('${key}')"` : ''}
+    title="${esc(label)} ${hhmm(s)}–${hhmm(e)}">${long ? esc(label) : ''}</div>`;
+}
+
+function focusSeg(key){
+  const el = document.getElementById('seg_' + key);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  el.style.transition = 'box-shadow .2s';
+  el.style.boxShadow = '0 0 0 2px var(--yel)';
+  setTimeout(() => el.style.boxShadow = '', 1200);
+}
+
+/* ---------------------------------------------------------------- 常駐時段卡 */
+function drawSegs(){
+  const n = nowMin(), P = D.params || {};
+  const list = residents().slice().sort((x,y) =>
+    (toMin(((x.when||{}).time||[])[0]) ?? 9999) - (toMin(((y.when||{}).time||[])[0]) ?? 9999));
+  if (editing()) return;
+  if (!changed('segs', [SEL, ONLINE, character(), list, cur().published,
+      list.map(c => [P[c.key+'_seconds'], P[c.key+'_fps'], isActive(c, n)])])) return;
+
+  $('segs').innerHTML = list.map(c => {
+    const m = meta(c.key), t = (c.when || {}).time || [];
+    const live = isActive(c, n);
+    const pub = published(c.key);
+    const bad = t.length >= 2 && toMin(t[0]) !== null && toMin(t[1]) !== null
+                && toMin(t[0]) >= toMin(t[1]);
+    return `<div class="seg ${live?'live':''} ${c.enabled?'':'off'}" id="seg_${c.key}"
+      style="--seg:${m.color}">
+      <h3>${esc(name(c))}
+        ${live ? '<span class="tag hot" style="margin:0">正在播</span>' : ''}</h3>
+      <div class="who">${m.label} · <code>${c.key}</code></div>
+      ${thumb(c.key)}
+      <p class="hint" style="margin-bottom:11px">${esc(m.desc)}</p>
+
+      <div class="times">
+        <input type="time" value="${esc(t[0]||'')}" data-t="${c.key}" data-i="0"
+          oninput="markInput(this)" onkeydown="if(event.key==='Enter')saveWhen('${c.key}')">
+        <span class="to">–</span>
+        <input type="time" value="${esc(t[1]||'')}" data-t="${c.key}" data-i="1"
+          oninput="markInput(this)" onkeydown="if(event.key==='Enter')saveWhen('${c.key}')">
+        <button class="btn sm" onclick="saveWhen('${c.key}')">存時段</button>
+      </div>
+      ${bad ? '<p class="hint" style="color:var(--bad);margin-top:6px">結束時間比開始還早。</p>' : ''}
+
+      <details style="margin-top:10px">
+        <summary>長度與流暢度</summary>
+        <div class="f2">
+          <div><label>幾秒一輪</label>
+            <input value="${esc(P[c.key+'_seconds'] ?? '')}" data-p="${c.key}_seconds"></div>
+          <div><label>每秒幾格</label>
+            <input value="${esc(P[c.key+'_fps'] ?? '')}" data-p="${c.key}_fps"></div>
         </div>
-        <p class="hint" style="margin-top:8px">存完要按上面的「發佈到卡」才會重編上去。</p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sm" onclick="saveParams()">儲存</button>
+        </div>
+        <p class="hint" style="margin-top:8px">
+          卡上會收到：<code>${esc(playControl(c))}</code></p>
       </details>
+
+      <div class="foot row">
+        <button class="btn sm" ${(!ONLINE||!pub)?'disabled':''}
+          onclick="playKey('${c.key}')">現在播這段</button>
+        <span class="grow"></span>
+        <button class="btn sm" ${!ONLINE?'disabled':''} onclick="toggleContent('${c.key}')">
+          ${c.enabled ? '停用' : '啟用'}</button>
+      </div>
+      <div style="margin-top:9px">${pub
+        ? '<span class="tag ok">已發佈</span>'
+          + (pub.file ? `<span class="tag num">${esc(pub.file)}</span>` : '')
+        : '<span class="tag bad">未發佈</span>'}</div>
     </div>`;
-  }).join('') || '<div class="panel hint">這家店還沒啟用任何內容。</div>';
+  }).join('') || '<div class="panel hint">這家店沒有任何常駐內容。</div>';
 }
 
-function esc(s){ return String(s).replace(/[&<>"]/g, m =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function thumb(key){
+  const src = videoSrc(key);
+  if (src) return `<div class="thumb"><video src="${src}" autoplay loop muted playsinline
+    onerror="this.parentNode.innerHTML='<div class=&quot;none&quot;>沒有預覽影片</div>'"></video></div>`;
+  if (meta(key).canvas) return `<div class="thumb"><div class="none">紅→黃漸層，看上面的大預覽</div></div>`;
+  return `<div class="thumb"><div class="none">美術製作中</div></div>`;
+}
 
-/* ---------------------------------------------------------------- 動作 */
-function pick(id){ SEL = id; localStorage.setItem('okawari_store', id); refresh(); }
+/* 把這個內容會變成什麼 playControl 講出來。對應後台 schedule.play_control_xml，
+   出問題的時候可以直接跟卡上的節目單對照。 */
+function playControl(c){
+  if (c.trigger === 'manual') return '<time start="00:00:00" end="00:00:01"/>（靠後台強制切換）';
+  const w = c.when || {}, bits = [];
+  const t = w.time || [];
+  if (t.length >= 2 && toMin(t[0]) !== null && toMin(t[1]) !== null)
+    bits.push(`<time start="${t[0]}:00" end="${t[1]}:00"/>`);
+  const d = w.date || [];
+  if (d.length >= 2 && d[0] && d[1]) bits.push(`<date start="${d[0]}" end="${d[1]}"/>`);
+  if (w.week) bits.push(`<week enable="${w.week}"/>`);
+  return bits.join('') || '（沒有條件，隨時可播）';
+}
+
+/* ---------------------------------------------------------------- 限期活動 */
+function drawPromos(){
+  const today = todayISO();
+  const list = promoItems();
+  if (editing()) return;
+  if (!changed('promos', [SEL, ONLINE, character(), today, list])) return;
+
+  $('promos').innerHTML = list.map(c => {
+    const m = meta(c.key), w = c.when || {}, t = w.time || [], d = w.date || [];
+    let state = '<span class="tag">已停用</span>';
+    if (c.enabled){
+      if (!inDate(w)) state = (d[0] && today < d[0])
+        ? `<span class="tag">還沒開始</span>` : `<span class="tag">已結束</span>`;
+      else state = `<span class="tag hot">日期到了</span>`;
+    }
+    const pending = c.art === 'pending';
+    return `<div class="seg ${c.enabled&&inDate(w)?'':'off'}" id="seg_${c.key}"
+      style="--seg:${m.color}">
+      <h3>${esc(name(c))}</h3>
+      <div class="who">${m.label} · <code>${c.key}</code></div>
+      ${thumb(c.key)}
+      <p class="hint" style="margin-bottom:11px">${esc(m.desc)}</p>
+
+      <label style="margin-top:0">日期（含頭含尾）</label>
+      <div class="times">
+        <input type="date" value="${esc(d[0]||'')}" data-d="${c.key}" data-i="0" oninput="markInput(this)">
+        <span class="to">–</span>
+        <input type="date" value="${esc(d[1]||'')}" data-d="${c.key}" data-i="1" oninput="markInput(this)">
+      </div>
+      <label>一天之內的時段</label>
+      <div class="times">
+        <input type="time" value="${esc(t[0]||'')}" data-t="${c.key}" data-i="0" oninput="markInput(this)">
+        <span class="to">–</span>
+        <input type="time" value="${esc(t[1]||'')}" data-t="${c.key}" data-i="1" oninput="markInput(this)">
+        <button class="btn sm" onclick="saveWhen('${c.key}', true)">存排程</button>
+      </div>
+      <p class="hint" style="margin-top:8px">
+        卡上會收到：<code>${esc(playControl(c))}</code></p>
+
+      <div class="foot row">
+        ${state}<span class="grow"></span>
+        ${pending ? '<span class="tag">美術製作中</span>' : ''}
+        <button class="btn sm" ${(!ONLINE||pending)?'disabled':''}
+          onclick="toggleContent('${c.key}')">${c.enabled ? '停用' : '啟用'}</button>
+      </div>
+      ${pending ? `<p class="hint" style="margin-top:8px">
+        美術還沒到位，發佈時會自己跳過這一支，所以現在打開也不會有畫面。</p>` : ''}
+    </div>`;
+  }).join('') || '<div class="panel hint">這家店沒有限期活動。</div>';
+}
+
+/* ---------------------------------------------------------------- 手動 */
+function drawManuals(){
+  const P = D.params || {};
+  const list = manualItems();
+  if (!changed('manuals', [SEL, ONLINE, list, cur().published, P.okawari_hit_chance])) return;
+
+  $('manuals').innerHTML = list.map(c => {
+    const m = meta(c.key), pub = published(c.key);
+    return `<div class="seg" id="seg_${c.key}" style="--seg:${m.color}">
+      <h3>${esc(name(c))}</h3>
+      <div class="who">${m.label} · <code>${c.key}</code></div>
+      <p class="hint" style="margin-bottom:12px">${esc(m.desc)}</p>
+      <button class="btn big" ${(!ONLINE||!pub)?'disabled':''} onclick="playKey('${c.key}')">
+        ${pub ? '▶ 觸發' + esc(m.label) : '尚未發佈'}</button>
+      <div class="foot">
+        <span class="tag num">中獎機率 ${Math.round((P.okawari_hit_chance||0)*100)}%</span>
+        ${pub ? '<span class="tag ok">已發佈</span>' : '<span class="tag bad">未發佈</span>'}
+        <p class="hint" style="margin-top:8px">
+          按下去是強制切過去播一次。播完卡會回到自己的時段輪播 ——
+          下一段的時間到了它就換過去。</p>
+      </div>
+    </div>`;
+  }).join('') || '<div class="panel hint">這家店沒有手動觸發的內容。</div>';
+}
+
+/* ---------------------------------------------------------------- 這面屏 */
+function drawDevice(){
+  const s = cur(), c = s.canvas || {}, card = s.card || {}, P = D.params || {};
+  if (document.activeElement !== $('opentime')) $('opentime').value = sched().open || '';
+  if (document.activeElement !== $('closetime')) $('closetime').value = sched().close || '';
+  $('offafter').checked = !!sched().screen_off_after_close;
+
+  $('chars').innerHTML = [['person','人物'],['ricebowl','小飯碗']].map(([k,lab]) =>
+    `<button class="btn sm ${character()===k?'primary':''}" onclick="setChar('${k}')">${lab}</button>`
+  ).join('');
+
+  const bits = [];
+  if (c.width) bits.push(`畫布 <b>${c.width} × ${c.height}</b>`);
+  if (s.mirror) bits.push(`鏡像自 ${esc(s.mirror.of)}（${esc(s.mirror.align)} 對齊）`);
+  if (card.model) bits.push(`卡 ${esc(card.model)}`);
+  if (card.last_known_ip) bits.push(`上次看到 ${esc(card.last_known_ip)}`);
+  const netmap = {'4g-router':'4G 路由器','none':'沒有對外網路','lan':'店內網路'};
+  if (s.network) bits.push(netmap[s.network.uplink] || esc(s.network.uplink));
+  if (D.hq_port) bits.push(`後台在聽卡撥回來（埠 ${D.hq_port}）`);
+  $('cardinfo').innerHTML = bits.join(' · ') || '—';
+
+  // 進階參數那幾格。正在打字、或改了還沒存的就別覆蓋。
+  for (const el of document.querySelectorAll('.panel [data-p]')){
+    if (document.activeElement === el || el.classList.contains('dirty')) continue;
+    const v = P[el.dataset.p];
+    if (v !== undefined && el.value !== String(v)) el.value = v;
+  }
+
+  // 這家店自己的活動文案。沒設過就顯示全域的值當底 ——
+  // 空白框會讓人以為沒設定，其實編出來是有字的。
+  const sp = s.params || {};
+  for (const el of document.querySelectorAll('.panel [data-sp]')){
+    if (document.activeElement === el || el.classList.contains('dirty')) continue;
+    const v = sp[el.dataset.sp] !== undefined ? sp[el.dataset.sp] : P[el.dataset.sp];
+    if (v !== undefined && el.value !== String(v)) el.value = v;
+  }
+}
+
+/* ================================================================
+   動作
+   ================================================================ */
+function pick(id){
+  SEL = id; SHOT = false;
+  localStorage.setItem('okawari_store', id);
+  $('nowscreen').dataset.src = '';
+  refresh();
+}
+function markInput(el){ el.classList.add('dirty'); }
 
 async function act(fn, label){
   if (!ONLINE) return toast('離線預覽，這個按鈕不會真的做事', 'bad');
   BUSY = true;
-  try { await fn(); toast(label + ' 完成', 'ok'); }
-  catch(e){ toast(label + ' 失敗：' + e.message, 'bad'); }
+  try {
+    await fn();
+    document.querySelectorAll('input.dirty').forEach(i => i.classList.remove('dirty'));
+    toast(label + '完成', 'ok');
+  }
+  catch(e){ apiErr(e, label); }
   finally { BUSY = false; refresh(); }
+}
+
+/* 抓完屏之後要回到原本的預覽。清掉 dataset.src 是為了讓 showScreen 認得
+   「現在畫的不是該畫的」，否則它會以為已經在播了就不動。 */
+function backToPreview(){
+  SHOT = false;
+  $('nowscreen').dataset.src = '';
+  drawNow();
 }
 
 function doConnect(){ act(() => api('/api/connect?store=' + SEL), '連線'); }
 
 function doPublish(){
-  if (!confirm('要重新編譯並送到卡上嗎？\n畫布越大越久，960×120 大約要一兩分鐘。')) return;
+  const c = cur().canvas || {};
+  if (!confirm('要重新編譯並送到卡上嗎？\n'
+    + '每一段都要重編、重送，' + (c.width >= 900 ? '這個畫布大約要一兩分鐘。' : '大約幾十秒。')))
+    return;
   $('pubbtn').textContent = '編譯發佈中…';
-  act(() => api('/api/publish?store=' + SEL), '發佈')
-    .finally(() => $('pubbtn').textContent = '發佈到卡');
+  BUSY = true;
+  api('/api/publish?store=' + SEL)
+    .then(() => { clearDirty(); toast('發佈完成', 'ok'); })
+    .catch(e => apiErr(e, '發佈'))
+    .finally(() => { BUSY = false; $('pubbtn').textContent = '發佈到卡'; refresh(); });
 }
 
-function trigger(key){
+function playNow(){ const k = $('nowplay').dataset.key; if (k) playKey(k); }
+
+function playKey(key){
   act(async () => {
     const r = await api('/api/switch?store=' + SEL + '&key=' + key);
-    if (r.hit === true)  toast('續碗中獎！劈石版本', 'ok');
-    if (r.hit === false) toast('續碗沒中，跑過去版本');
-  }, '播放');
+    if (r.hit === true)  toast('續碗中獎！劈石那支', 'ok');
+    if (r.hit === false) toast('續碗沒中，只跑過去那支');
+  }, '切到 ' + meta(key).label + ' ');
 }
 
-function bright(v){ act(() => api('/api/brightness?value=' + v), '亮度 ' + v); }
+/* 存時段。空白＝把條件拿掉（變成全時段），後台那邊會 pop 掉。 */
+function saveWhen(key, withDate){
+  const g = (sel, i) => {
+    const el = document.querySelector(`[data-${sel}="${key}"][data-i="${i}"]`);
+    return el ? el.value.trim() : '';
+  };
+  const body = {store:SEL, key:key, time:[g('t',0), g('t',1)]};
+  if (withDate) body.date = [g('d',0), g('d',1)];
+  const a = toMin(body.time[0]), b = toMin(body.time[1]);
+  if (a !== null && b !== null && a >= b
+      && !confirm('結束時間比開始早，這樣會被當成跨午夜。確定要存？')) return;
+  act(() => api('/api/set_when', body).then(() => markDirty()), '存排程');
+}
 
-function saveGroup(k){
+function toggleContent(key){
+  act(() => api('/api/toggle_content', {id:SEL, key:key}).then(() => markDirty()), '切換啟用');
+}
+
+function saveSchedule(){
+  act(() => api('/api/set_schedule', {
+    store: SEL, open: $('opentime').value, close: $('closetime').value,
+    screen_off_after_close: $('offafter').checked,
+  }), '套用開關屏時間');
+}
+
+function setChar(k){
+  if (k === character()) return;
+  act(() => api('/api/params', {character:k}).then(() => markDirty()), '換主角');
+}
+
+function saveStoreParams(){
+  const c = cur();
+  if (!c) return;
+  const p = {};
+  document.querySelectorAll('[data-sp]').forEach(i => p[i.dataset.sp] = i.value);
+  act(() => api('/api/store_params', {store:c.id, params:p}).then(() => markDirty()),
+      '儲存文案');
+}
+
+function saveParams(){
   const b = {};
-  document.querySelectorAll('[data-g="' + k + '"]').forEach(i => b[i.dataset.p] = i.value);
-  act(() => api('/api/params', b), '儲存參數');
+  document.querySelectorAll('[data-p]').forEach(i => {
+    if (i.value !== '') b[i.dataset.p] = i.value;
+  });
+  act(() => api('/api/params', b).then(() => markDirty()), '儲存參數');
+}
+
+function bright(v){ act(() => api('/api/brightness?value=' + v), '亮度 ' + v + ' '); }
+
+function doWipe(){
+  if (!confirm('把卡上的節目全部刪掉？\n清完屏上會沒東西，要重新發佈。')) return;
+  act(() => api('/api/wipe').then(() => markDirty()), '清空節目');
 }
 
 function addStore(){
@@ -487,107 +1289,87 @@ function addStore(){
 
 async function loadShot(){
   if (!ONLINE) return toast('離線預覽抓不到畫面', 'bad');
-  stopLive();
-  const cv = $('prev'), g = cv.getContext('2d');
+  const box = $('nowscreen');
   const im = new Image();
   im.onload = () => {
-    mode = 'shot';
+    SHOT = true;
+    box.dataset.src = 'shot';
+    box.innerHTML = '';
+    const cv = document.createElement('canvas');
+    cv.className = 'screen'; cv.style.border = '0';
     cv.width = im.width; cv.height = im.height;
     cv.style.aspectRatio = im.width + ' / ' + im.height;
-    g.drawImage(im, 0, 0);
+    cv.getContext('2d').drawImage(im, 0, 0);
+    box.appendChild(cv);
     $('prevleft').textContent = '屏上實際畫面 ' + im.width + '×' + im.height;
     $('prevright').textContent = new Date().toLocaleTimeString();
   };
-  im.onerror = () => toast('抓不到畫面。影片內容本來就截不到圖，會是黑的。', 'bad');
+  im.onerror = () => toast('抓不到畫面。影片內容本來就截不到圖，會是黑的 —— 那是卡的限制，不是壞掉。', 'bad');
   im.src = BASE + '/api/shot?' + Date.now();
 }
 
 /* ================================================================
    待機漸層預覽
-   照 artwork.py 的 Screen.gradient() 一比一搬過來，
-   這樣後台還沒開、或還沒發佈的時候也看得到改參數的效果。
+   照 artwork.py 的 Screen.gradient() 一比一搬過來，這樣後台還沒開、
+   或還沒發佈的時候也看得到改參數的效果。
    ================================================================ */
 const RED=[226,58,46], ORG=[240,120,24], YEL=[247,179,43];
 const RAMP = (() => {
   const r = new Uint8Array(256*3);
-  for (let i=0;i<256;i++){
+  for (let i = 0; i < 256; i++){
     const t = i/255;
-    let c;
-    if (t < 0.5){ const u=t*2; c = RED.map((v,k)=>v+(ORG[k]-v)*u); }
-    else { const u=(t-0.5)*2; c = ORG.map((v,k)=>v+(YEL[k]-v)*u); }
-    r[i*3]=c[0]|0; r[i*3+1]=c[1]|0; r[i*3+2]=c[2]|0;
+    const c = t < 0.5 ? RED.map((v,k) => v + (ORG[k]-v)*(t*2))
+                      : ORG.map((v,k) => v + (YEL[k]-v)*((t-0.5)*2));
+    r[i*3] = c[0]|0; r[i*3+1] = c[1]|0; r[i*3+2] = c[2]|0;
   }
   return r;
 })();
 
 /* 讀參數：優先讀畫面上正在編輯的輸入框，沒有才用後台存的值。
    這樣調參數是即時看得到的，不用先存檔。 */
-function livParam(name, dflt){
-  const el = document.querySelector('[data-p="' + name + '"]');
-  if (el && el.value !== '') { const v = parseFloat(el.value); if (!isNaN(v)) return v; }
-  const v = (D && D.params) ? parseFloat(D.params[name]) : NaN;
+function livParam(n, dflt){
+  const el = document.querySelector('[data-p="' + n + '"]');
+  if (el && el.value !== ''){ const v = parseFloat(el.value); if (!isNaN(v)) return v; }
+  const v = (D && D.params) ? parseFloat(D.params[n]) : NaN;
   return isNaN(v) ? dflt : v;
 }
 
-let live = false, phase = 0, raf = null;
-let mode = 'preview';        // 'preview' = 自己算的漸層；'shot' = 從卡上抓回來的畫面
-
-function drawPreview(ph){
-  mode = 'preview';
-  const s = cur(), c = s.canvas || {};
+function drawIdlePreview(){
+  const cv = $('prev');
+  if (!cv) return;                                   // 現在不是待機段，沒這塊畫布
+  const c = cur().canvas || {};
   const cols = c.width || 160, rows = c.height || 40;
-  const cv = $('prev'), g = cv.getContext('2d');
   cv.width = cols; cv.height = rows;
   cv.style.aspectRatio = cols + ' / ' + rows;
 
   const win = livParam('gradient_window', 0.72);
   const dAmt = livParam('dither', 0.22);
-  const dth = []; for (let k=0;k<17;k++) dth.push(((k/17)-0.5)*dAmt);
+  const dth = []; for (let k = 0; k < 17; k++) dth.push(((k/17) - 0.5) * dAmt);
 
-  const img = g.createImageData(cols, rows);
-  const px = img.data;
-  const span = Math.max(1, cols-1);
+  const g = cv.getContext('2d');
+  const img = g.createImageData(cols, rows), px = img.data;
+  const wide = Math.max(1, cols-1);
   let i = 0;
-  for (let y=0;y<rows;y++){
+  for (let y = 0; y < rows; y++){
     const d13 = 13*y;
-    for (let x=0;x<cols;x++){
-      let t = ph + (x/span)*win + dth[(7*x + d13) % 17];
+    for (let x = 0; x < cols; x++){
+      let t = (x/wide)*win + dth[(7*x + d13) % 17];
       t = t < 0 ? 0 : (t > 1 ? 1 : t);
       const o = (t*255|0)*3;
-      px[i++]=RAMP[o]; px[i++]=RAMP[o+1]; px[i++]=RAMP[o+2]; px[i++]=255;
+      px[i++] = RAMP[o]; px[i++] = RAMP[o+1]; px[i++] = RAMP[o+2]; px[i++] = 255;
     }
   }
   g.putImageData(img, 0, 0);
-
-  $('prevleft').textContent = '待機畫布預覽 ' + cols + '×' + rows;
-  $('prevright').textContent = s.mirror
-    ? ('這是 ' + s.mirror.of + ' 等比縮小後的中段')
-    : '主畫布';
-}
-
-/* phase 走三角波，跟 render_idle() 一樣，這樣尾接頭不會跳。 */
-function toggleLive(){ live ? stopLive() : startLive(); }
-function startLive(){
-  live = true; $('livebtn').textContent = '停止';
-  const secs = Math.max(1, livParam('idle_seconds', 30));
-  const room = 1 - livParam('gradient_window', 0.72);
-  const t0 = performance.now();
-  (function step(now){
-    if (!live) return;
-    const q = ((now - t0) / 1000 / secs) % 1;
-    phase = room * (q < 0.5 ? q*2 : (1-q)*2);
-    drawPreview(phase);
-    raf = requestAnimationFrame(step);
-  })(t0);
-}
-function stopLive(){
-  live = false; if (raf) cancelAnimationFrame(raf);
-  $('livebtn').textContent = '播放待機畫面';
+  $('prevleft').textContent = '待機漸層預覽 ' + cols + '×' + rows;
+  $('prevright').textContent = cur().mirror
+    ? ('這是 ' + cur().mirror.of + ' 縮小後的中段') : '主畫布';
 }
 
 /* ---------------------------------------------------------------- 啟動 */
 refresh();
-setInterval(() => { if (!BUSY) refresh(); }, 6000);
+setInterval(() => { if (!BUSY) refresh(); }, 8000);
+// 時鐘和「現在播哪一段」不必等後台，自己每 15 秒重算一次就好
+setInterval(() => { if (!BUSY && D){ drawClock(); drawNow(); drawTimeline(); drawBanners(); } }, 15000);
 </script>
 </body>
 </html>

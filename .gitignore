@@ -28,3 +28,9 @@ __pycache__/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 存檔前自動留的備份，跟原檔重複
+*.bak
+
+# 給自己看的分鏡檢查圖，不是交付物
+後台/_預覽_0818/
