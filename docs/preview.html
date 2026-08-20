@@ -76,17 +76,6 @@ p.note{color:var(--dim);max-width:640px}
 .soon{opacity:.55}
 .soon b::after{content:" · 製作中";color:var(--dim2);font-weight:400;font-size:13px}
 /* ---------------------------------------------------------- 主角切換 */
-.pick{display:inline-flex;align-items:center;gap:8px;margin-top:26px;
-  background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:6px 8px 6px 16px}
-.pick-label{font-size:12.5px;letter-spacing:.1em;color:var(--dim);margin-right:4px}
-.pick-btn{cursor:pointer;border:0;border-radius:20px;padding:9px 20px;font-size:15px;
-  font-weight:700;background:transparent;color:var(--dim);
-  font-family:inherit;transition:background .15s,color .15s}
-.pick-btn:hover{color:var(--ink)}
-.pick-btn.on{background:linear-gradient(90deg,var(--org),var(--yel));color:#1a1008}
-.pick-note{color:var(--dim2);font-size:13.5px;margin-top:12px}
-.screen{transition:opacity .18s}
-.screen.swap{opacity:.25}
 
 footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
 @media(max-width:600px){
@@ -104,17 +93,8 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
     <h1>門口那面屏，<br>會<em>跟著一天</em>改變。</h1>
     <p class="lede">
       不是循環播放的廣告牌。開店、午餐、午後、晚餐 ——
-      主角在上面過完一整天，客人每次經過看到的都不一樣。
+      小飯碗在上面過完一整天，客人每次經過看到的都不一樣。
     </p>
-    <div class="pick">
-      <span class="pick-label">主角</span>
-      <button class="pick-btn on" data-c="person" onclick="setChar('person')">人物</button>
-      <button class="pick-btn" data-c="ricebowl" onclick="setChar('ricebowl')">小飯碗</button>
-    </div>
-    <p class="pick-note" id="picknote">
-      同一套分鏡，換個主角看看。切換後整頁的畫面會一起換。
-    </p>
-  </div>
 </header>
 
 <section>
@@ -149,7 +129,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <h3>布簾拉開，新的一天</h3>
       <p class="note">主角睡醒伸個懶腰，沿著一路亮起來的飯粒走過去，
          走到那碗飯前面舉手歡呼。像 8-bit 遊戲的開場。</p>
-      <div class="screen"><video src="preview/opening_person.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/opening_ricebowl.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">14 秒</span><span class="tag">25 fps</span><span class="tag">960 × 120</span></div>
     </div>
 
@@ -158,7 +138,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <h3>今天也要好好吃飯</h3>
       <p class="note">端著剛盛好的飯慢慢走過，熱氣一直往上冒。
          午餐尖峰時段，畫面保持溫熱、不吵。</p>
-      <div class="screen"><video src="preview/noon_person.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/noon_ricebowl.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">16 秒</span><span class="tag">25 fps</span><span class="tag hot">熱氣動畫</span></div>
     </div>
 
@@ -167,7 +147,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <h3>午後發呆 Zzz…</h3>
       <p class="note">沒什麼客人的時段，主角乾脆躺在飯上睡著了，
          偶爾翻個身。這一段刻意放慢，讓店裡安靜下來。</p>
-      <div class="screen"><video src="preview/siesta_person.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/siesta_ricebowl.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">20 秒</span><span class="tag">12 fps</span><span class="tag">節奏最慢</span></div>
     </div>
 
@@ -177,7 +157,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
       <p class="note">下班時間。主角換上班族造型——西裝、領帶、公事包，
          拖著腳步走進來，把包放下、坐下來。看到飯的那一刻整個人才亮起來。
          全程沒有一個字，靠動作講完。給的是「可以休息了」這件事，不是促銷。</p>
-      <div class="screen"><video src="preview/evening_person.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/evening_ricebowl.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">16 秒</span><span class="tag">25 fps</span><span class="tag hot">上班族造型</span><span class="tag">無文字</span></div>
     </div>
 
@@ -241,7 +221,7 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
         石頭裂開的那一刻背景整片壓暗。金色跟畫面本來的紅橙是鄰近色，
         不壓暗的話金飯碗會整隻融進背景——順便也就是聚光燈的效果。
       </p>
-      <div class="screen"><video src="preview/bonus_person.mp4" autoplay loop muted playsinline></video></div>
+      <div class="screen"><video src="preview/bonus_ricebowl.mp4" autoplay loop muted playsinline></video></div>
       <div class="meta"><span class="tag">9 秒</span><span class="tag">25 fps</span><span class="tag hot">稀有金飯碗</span><span class="tag">兩隻小飯碗</span></div>
     </div>
 
@@ -303,56 +283,27 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
 <footer>
   <div class="wrap">
     <p style="margin-bottom:14px">
-      <a href="screen.html" style="color:var(--yel)">看門口那面屏現在在播什麼 →</a><br>
-      <a href="console.html" style="color:var(--yel)">模擬後台：按按鈕試觸發 →</a><br>
-      <a href="characters.html" style="color:var(--yel)">看兩個角色的全部姿勢 →</a>
+      <a href="console.html" style="color:var(--yel)">後台總覽：三個端的狀態 →</a><br>
     </p>
-    畫面為實際輸出檔，尺寸與比例同台南門市 960 × 120。<br>
+    畫面為實際輸出檔，尺寸與比例同台南小北 960 × 120。<br>
     ON Design Lab
   </div>
 </footer>
 
+
 <script>
-/* 主角切換。
-   兩個版本是分別編出來的實際影片，不是網頁特效 —— 所以切過去看到的
-   就是那個角色真的上屏會長的樣子。
-   檔名：xxx_person.mp4 ／ xxx_ricebowl.mp4 */
-const NOTE = {
-  person:   '同一套分鏡，換個主角看看。切換後整頁的畫面會一起換。',
-  ricebowl: '小飯碗版。碗本身就是主角，走路時碗緣的紅帶最好認 —— 遠看辨識度比較高。'
-};
-
-function setChar(c){
-  document.querySelectorAll('.pick-btn').forEach(b =>
-    b.classList.toggle('on', b.dataset.c === c));
-  document.getElementById('picknote').textContent = NOTE[c];
-
-  document.querySelectorAll('.screen').forEach(box => {
-    const v = box.querySelector('video');
-    if (!v) return;
-    // 檔名長這樣：opening_person.mp4 / opening_ricebowl.mp4
-    const stem = v.dataset.stem ||
-      (v.dataset.stem = v.getAttribute('src').replace(/_(person|ricebowl)\.mp4$/, ''));
-    const next = stem + '_' + c + '.mp4';
-    if (v.getAttribute('src') === next) return;
-
-    // 換檔的時候淡一下，不然畫面會硬跳
-    box.classList.add('swap');
-    v.src = next;
-    v.load();
-    v.play().catch(()=>{});
-    v.addEventListener('loadeddata', () => box.classList.remove('swap'), {once:true});
-    setTimeout(() => box.classList.remove('swap'), 900);   // 保險
-  });
-  try { localStorage.setItem('okawari_char', c); } catch(e) {}
+/* 影片自己播。
+   原本靠 <video autoplay>，但那個是「瀏覽器願意的時候才播」——
+   剛剛實測拿掉主角切換的 script 之後，九段全部停在第一幀。
+   因為以前是那支 script 在 setChar 裡呼叫 play()，把它們踢起來的。
+   給客戶看的頁面不能賭瀏覽器的心情，所以自己踢：
+   載入時試一次，使用者第一次捲動或點畫面再補一次。 */
+function playAll(){
+  document.querySelectorAll('video').forEach(v => { v.play().catch(()=>{}); });
 }
-
-// 記住上次看的是哪一個
-try {
-  const saved = localStorage.getItem('okawari_char');
-  if (saved === 'ricebowl') setChar('ricebowl');
-} catch(e) {}
+addEventListener('load', playAll);
+addEventListener('pointerdown', playAll, {once:true});
+addEventListener('scroll', playAll, {passive:true, once:true});
 </script>
-
 </body>
 </html>

@@ -1,0 +1,93 @@
+/* 後台與店端共用的樣式。三頁長得一樣，改一個地方三頁一起變。 */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#141010; --panel:#1e1816; --line:#3a2e28; --ink:#f6efe8;
+  --dim:#a2938a; --dim2:#6f625b;
+  --red:#e23a2e; --org:#f07818; --yel:#f7b32b; --ok:#5fae6a;
+}
+body{
+  background:var(--bg);color:var(--ink);padding:0 0 70px;
+  font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px}
+a{color:var(--yel)}
+
+header{padding:30px 0 20px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.brand{display:inline-flex;align-items:center;gap:10px;font-size:12.5px;
+  letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:10px}
+.brand i{width:26px;height:10px;border-radius:3px;display:block;
+  background:linear-gradient(90deg,var(--red),var(--yel))}
+h1{font-size:25px;font-weight:800}
+.sub{color:var(--dim);margin-top:7px;font-size:14.5px}
+.crumb{font-size:13px;color:var(--dim2);margin-bottom:10px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:18px;margin-bottom:16px}
+h2{font-size:12.5px;letter-spacing:.15em;color:var(--dim);text-transform:uppercase;
+  margin-bottom:13px;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+
+button{cursor:pointer;font-family:inherit;font-weight:700;border:0;border-radius:10px;
+  padding:12px 18px;font-size:15px;background:#2b2320;color:var(--ink);
+  transition:transform .06s,filter .12s}
+button:hover{filter:brightness(1.18)}
+button:active{transform:translateY(1px)}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);
+  font-weight:600;padding:9px 14px;font-size:14px}
+button.ghost.on{border-color:var(--yel);color:var(--yel)}
+button.big{padding:22px 24px;font-size:17px;flex:1;min-width:190px;line-height:1.35}
+button.cust{background:linear-gradient(135deg,var(--org),var(--yel));color:#1a1008}
+button.staff{background:linear-gradient(135deg,#c0392b,var(--red));color:#fff}
+
+label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:5px}
+input[type=text]{width:100%;background:#120e0d;border:1px solid var(--line);
+  border-radius:8px;padding:10px 12px;color:var(--ink);font:inherit;font-size:14px}
+input[type=range]{width:100%;accent-color:var(--yel)}
+.val{font-variant-numeric:tabular-nums;color:var(--yel);font-weight:700}
+.note{color:var(--dim2);font-size:13px;margin-top:10px}
+.note b{color:var(--yel)}
+
+.pill{display:inline-block;border:1px solid var(--line);border-radius:20px;
+  padding:3px 11px;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.pill.live{border-color:#5a4420;color:var(--yel)}
+.pill.on{border-color:#2f5c36;color:var(--ok)}
+.pill.off{border-color:#4a2a26;color:#b4574d}
+
+/* 屏體。外面那圈是箱體不是畫面 —— 直接貼一支影片在白底上看不出感覺。 */
+.box{background:#151110;border:1px solid #322a26;border-radius:12px;padding:10px;
+  box-shadow:0 20px 50px #0008, inset 0 1px 0 #ffffff08}
+.panel{position:relative;background:#000;border-radius:3px;overflow:hidden;
+  box-shadow:inset 0 0 0 2px #0d0b0a}
+.panel video{display:block;width:100%;height:auto;image-rendering:pixelated;
+  transition:opacity .12s}
+.panel.switching video{opacity:.14}
+/* LED 點陣。P4 的燈珠之間有黑格，加這層才像實體屏不像電視。 */
+.panel .grid{position:absolute;inset:0;pointer-events:none;opacity:.4;
+  background-image:
+    repeating-linear-gradient(to right,#0000 0 3px,#0006 3px 4px),
+    repeating-linear-gradient(to bottom,#0000 0 3px,#0006 3px 4px)}
+.panel .off{position:absolute;inset:0;background:#000;display:none;
+  align-items:center;justify-content:center;color:#3a322c;font-size:12px;
+  letter-spacing:.25em}
+.panel.dark .off{display:flex}
+/* 測試屏是台南那面屏縮小之後取中間那段，不是獨立設計。 */
+.panel.mirror{overflow:hidden}
+.panel.mirror video{width:200%;margin-left:-50%}
+
+.combo{display:flex;gap:7px;margin-top:12px}
+.dot{flex:1;height:7px;border-radius:4px;background:#2b2320}
+.dot.on{background:linear-gradient(90deg,var(--org),var(--yel))}
+
+.log{font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--dim);max-height:180px;overflow:auto;background:#120e0d;
+  border:1px solid var(--line);border-radius:8px;padding:11px}
+.log b{color:var(--yel);font-weight:600}
+
+.stores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.store{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:16px;display:flex;flex-direction:column;gap:11px}
+.store h3{font-size:17px;font-weight:700}
+.store .meta{display:flex;flex-wrap:wrap;gap:6px}
+.warn{border-color:#5a3420;background:#1f1512}
+.warn h2{color:var(--org)}

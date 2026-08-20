@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OKAWARI · 單店設定</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e23a2e'/><rect x='7' y='7' width='18' height='18' rx='3' fill='%23f7b32b'/></svg>">
+<link rel="stylesheet" href="ui.css">
+<style>
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tab{border:1px solid var(--line);border-radius:10px;padding:9px 16px;
+  font-size:14px;font-weight:600;color:var(--dim);text-decoration:none}
+.tab.on{border-color:var(--yel);color:var(--yel);background:#1f1712}
+.seg{display:flex;justify-content:space-between;gap:10px;padding:8px 0;
+  border-bottom:1px solid #2a221e;font-size:14px}
+.seg:last-child{border-bottom:0}
+.seg span{color:var(--dim);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <div class="crumb"><a href="console.html">後台總覽</a> ／ 單店設定</div>
+  <div class="brand"><i></i>OKAWARI 門頭屏</div>
+  <h1 id="title">—</h1>
+  <p class="sub" id="sub">—</p>
+</div></header>
+
+<div class="wrap">
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="card">
+    <h2>這面屏現在</h2>
+    <div class="box"><div class="panel" id="panel">
+      <video id="v" autoplay loop muted playsinline></video>
+      <div class="grid"></div><div class="off">已 打 烊</div>
+    </div></div>
+    <div class="row" style="margin-top:11px">
+      <span class="pill">現在 <b id="clock" style="color:var(--ink)">--:--</b></span>
+      <span class="pill" id="segpill">—</span>
+      <button class="ghost" onclick="window.open('screen.html?id='+ID,'_blank')">
+        開這家店的店端 ↗</button>
+    </div>
+    <p class="note">
+      店端那一頁才有續飯和滿額的按鈕 —— 那兩顆是店裡的實體按鈕，
+      不是後台按的。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>時段</h2>
+    <div id="segs"></div>
+    <p class="note">
+      屏按自己的時鐘換畫面，不需要後台在線上。
+      這一組寫進節目的 playControl，卡自己看時間播。
+    </p>
+    <div class="row" style="margin-top:12px">
+      <button class="ghost" id="m-real" onclick="setClock('real')">跟著現在</button>
+      <button class="ghost" id="m-fixed" onclick="setClock('fixed')">指定時間試看</button>
+    </div>
+    <div id="fixedbox" style="margin-top:13px;display:none">
+      <label>停在 <span class="val" id="tval">12:00</span></label>
+      <input type="range" id="tm" min="600" max="1400" step="5" oninput="setTime(this.value)">
+      <div class="row" style="margin-top:9px">
+        <button class="ghost" onclick="jump('11:10')">開店</button>
+        <button class="ghost" onclick="jump('12:30')">中午</button>
+        <button class="ghost" onclick="jump('15:30')">午後</button>
+        <button class="ghost" onclick="jump('19:30')">晚間</button>
+        <button class="ghost" onclick="jump('23:00')">打烊</button>
+      </div>
+      <p class="note">只是試看，不會動到真正的排播。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>活動文案</h2>
+    <div class="f2">
+      <div><label>買一送一 主標</label>
+        <input type="text" id="bogoText" oninput="set('bogoText',this.value)"></div>
+      <div><label>買一送一 日期</label>
+        <input type="text" id="bogoDate" oninput="set('bogoDate',this.value)"></div>
+    </div>
+    <div style="margin-top:12px">
+      <label>滿額 1000 完成文字</label>
+      <input type="text" id="bonusText" oninput="set('bonusText',this.value)">
+    </div>
+    <div style="margin-top:12px">
+      <label>晚間台詞（留空 = 不放字）</label>
+      <input type="text" id="eveningText" oninput="set('eveningText',this.value)"
+             placeholder="留空">
+    </div>
+    <p class="note">
+      <b>這幾格是各店分開存的。</b>
+      兩家店檔期不一樣，中港 9/1–2、小北 9/2–3，旗幟上的字要跟著不同。
+      這些字是編進影片裡的，改完要重新發佈才會上屏。<br>
+      晚間台詞預設空的 —— 長中文在 P4 屏上遠看會糊。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>切換延遲</h2>
+    <label>SwitchProgram 來回 <span class="val" id="latval">400</span> ms</label>
+    <input type="range" id="lat" min="0" max="3000" step="50" oninput="setLat(this.value)">
+    <p class="note">
+      <b>這一格是模擬階段最重要的東西。</b>
+      拉到 300 跟拉到 2000，在店端按下去的感覺完全不一樣。
+      實際數字要用 <code>_測_SwitchProgram延遲.py</code> 上機量，
+      量出來超過 1500 ms 的話，三段累積式的 COMBO 就不要做。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>主角</h2>
+    <div class="row">
+      <button class="ghost" id="c-ricebowl" onclick="setChar('ricebowl')">小飯碗</button>
+      <button class="ghost" id="c-person" onclick="setChar('person')">人物</button>
+    </div>
+    <p class="note">
+      提案給業主的版本已經定成小飯碗，人物那版留著是為了內部比對用。
+    </p>
+  </div>
+
+</div>
+
+<script type="module">
+import { SEGMENTS, STORES, storeById, loadStore, saveStore, nowMin, segmentAt,
+         videoSrc, hhmm, toMin, bus, keepPlaying, CLOSE_AT } from './sim.js';
+
+const $ = id => document.getElementById(id);
+const B = bus();
+const ID = new URLSearchParams(location.search).get('id') || 'tainan';
+window.ID = ID;
+
+const S = storeById(ID);
+let st = loadStore(ID);
+let playing = null;
+
+$('title').textContent = S.short + '　設定';
+$('sub').textContent = S.name + '　' + S.where + '　畫布 ' + S.w + ' × ' + S.h;
+$('tabs').innerHTML = STORES.map(s =>
+  `<a class="tab ${s.id === ID ? 'on' : ''}" href="store.html?id=${s.id}">${s.short}</a>`
+).join('');
+$('segs').innerHTML = SEGMENTS.map(g =>
+  `<div class="seg"><b>${g.name}</b><span>${g.from} – ${g.to}　${g.secs} 秒</span></div>`
+).join('');
+
+const panel = $('panel'), v = $('v');
+panel.style.aspectRatio = S.w + ' / ' + S.h;
+if (S.mirrorOf) panel.classList.add('mirror');
+const kick = keepPlaying();
+
+/* 存 + 通知。店端和總覽都要立刻看到改動 —— 後台改了設定，
+   店裡那面屏不用等人重新整理。 */
+function push() { saveStore(ID, st); B.send('settings', ID, null); paint(); }
+
+window.set = (k, val) => { st[k] = val; push(); };
+window.setLat = val => { st.latency = +val; push(); };
+window.setChar = c => { st.character = c; playing = null; push(); };
+window.setClock = m => { st.clockMode = m; push(); };
+window.setTime = val => { st.fixedMin = +val; push(); };
+window.jump = t => { st.clockMode = 'fixed'; st.fixedMin = toMin(t); push(); };
+
+function paint() {
+  $('latval').textContent = st.latency;
+  $('lat').value = st.latency;
+  $('tval').textContent = hhmm(st.fixedMin);
+  $('tm').value = st.fixedMin;
+  $('m-real').classList.toggle('on', st.clockMode === 'real');
+  $('m-fixed').classList.toggle('on', st.clockMode === 'fixed');
+  $('fixedbox').style.display = st.clockMode === 'fixed' ? 'block' : 'none';
+  $('c-person').classList.toggle('on', st.character === 'person');
+  $('c-ricebowl').classList.toggle('on', st.character === 'ricebowl');
+  for (const k of ['bogoText', 'bogoDate', 'bonusText', 'eveningText']) {
+    if (document.activeElement !== $(k)) $(k).value = st[k] || '';
+  }
+}
+
+function tick() {
+  const min = nowMin(st);
+  $('clock').textContent = hhmm(min);
+  const seg = segmentAt(min);
+  panel.classList.toggle('dark', !seg);
+  if (!seg) {
+    $('segpill').textContent = '打烊（' + CLOSE_AT + ' 關屏）';
+    $('segpill').className = 'pill off';
+    return;
+  }
+  $('segpill').innerHTML = '常駐：<b style="color:var(--ink)">' + seg.name + '</b>';
+  $('segpill').className = 'pill on';
+  if (playing !== seg.key) {
+    playing = seg.key;
+    v.src = videoSrc(seg.key, st.character);
+    v.play().catch(() => {});
+  }
+  kick();
+}
+
+setInterval(tick, 1000);
+paint(); tick();
+</script>
+</body>
+</html>

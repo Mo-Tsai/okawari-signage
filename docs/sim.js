@@ -1,19 +1,32 @@
-/* OKAWARI 門頭屏 · 模擬器共用邏輯
+/* OKAWARI 門頭屏 · 模擬層共用邏輯
    ================================================================
-   兩頁共用：screen.html（屏長什麼樣）與 console.html（後台按什麼）。
+   架構（2026-08-19 業主定的，跟第一版不同，這裡記下來免得又走偏）：
 
-   為什麼要有模擬器：卡還沒上牆、按鈕還沒買，但故事線要先跟業主定案。
-   這一套在瀏覽器裡把「時段自己換」「客人按續飯」「店員按滿額」
-   全部跑一遍，不需要任何硬體。
+     後台       console.html            三家店的總覽，看狀態
+                store.html?id=…         單店設定。三個區塊 = 三頁
+     店端       screen.html?id=…        那家店的屏 + 那家店的按鈕
 
+   兩件事要分清楚：
+
+   1. **後台是設定與監看的地方，不是按按鈕的地方。**
+      後台要能看每一家店現在什麼狀況，設定也在後台各店的頁面上做。
+      未來這三頁的內容往上累加，就是總部的多店後台。
+
+   2. **COMBO 做在各端，不在後台。**
+      客人續飯是在店裡按的，店員滿額也是在店裡按的 ——
+      按鈕接在店內那台小主機上，訊號不會繞去總部再回來。
+      所以觸發鈕長在 screen.html（店端）上，後台頁上沒有。
+
+   三個端：台中港店、台南小北店、測試屏（放在台南總部）。
+
+   ---------------------------------------------------------------
    兩頁怎麼講話：BroadcastChannel（同一台機器、同一個瀏覽器）。
-   ★ 這是模擬用的，不是真的通訊架構 —— 真機是後台送 SwitchProgram 給卡。
-     跨裝置（例如 iPad 當按鈕）BroadcastChannel 是打不通的，
-     那要走真的後台伺服器。這件事在 console 上有標出來。
+   ★ 這是模擬用的，不是真的通訊架構 —— 真機是各店的小主機對自己那張卡
+     送 SwitchProgram，總部只負責推內容跟收心跳。
    ================================================================ */
 
 const CH = 'okawari-sim';
-const LS = 'okawari-sim-state';
+const LS = 'okawari-sim-v2';
 
 /* 四段常駐。時段跟 stores.json 的 contents[].when 是同一組，
    改這裡要記得兩邊一起改 —— 模擬跟真機對不上就失去意義了。 */
@@ -25,17 +38,24 @@ export const SEGMENTS = [
 ];
 
 export const EVENTS = {
-  combo1: { name: '續飯 COMBO 1',  secs: 3,  who: '客人' },
-  combo2: { name: '續飯 COMBO 2',  secs: 4,  who: '客人' },
-  combo3: { name: '續飯 COMBO 3',  secs: 7,  who: '客人' },
-  bonus:  { name: '滿額 1000',     secs: 9,  who: '店員' },
-  bogo:   { name: '買一送一',      secs: 13, who: '活動' },
+  combo1: { name: '續飯 COMBO 1', secs: 3,  who: '客人' },
+  combo2: { name: '續飯 COMBO 2', secs: 4,  who: '客人' },
+  combo3: { name: '續飯 COMBO 3', secs: 7,  who: '客人' },
+  bonus:  { name: '滿額 1000',    secs: 9,  who: '店員' },
+  bogo:   { name: '買一送一',     secs: 13, who: '活動' },
 };
 
-/* 門店。畫布比例不同，屏的長寬比會差 8%，模擬要看得出來。 */
+/* 三個端。畫布尺寸取自 stores.json，不要在這裡自己編。
+   測試屏是台南等比縮 1/3 之後取中間那段 —— 所以它不是獨立設計，
+   而是「台南那面屏的一個視窗」。模擬要照這個演，不然測試屏上看到的
+   跟門市不是同一個比例，測了也不算數。 */
 export const STORES = [
-  { id: 'taichung', name: '新光三越台中港', w: 1040, h: 120 },
-  { id: 'tainan',   name: '新光三越台南小北', w: 960,  h: 120 },
+  { id: 'taichung', name: '新光三越台中港', short: '台中屏',
+    w: 1040, h: 120, where: '門市' },
+  { id: 'tainan', name: '新光三越台南小北', short: '台南屏',
+    w: 960, h: 120, where: '門市' },
+  { id: 'test', name: '測試屏（台南總部）', short: '測試屏',
+    w: 160, h: 40, where: '總部', mirrorOf: 'tainan', mirrorZoom: 2 },
 ];
 
 export const OPEN_AT = '11:00', CLOSE_AT = '22:30';
@@ -44,15 +64,31 @@ export const OPEN_AT = '11:00', CLOSE_AT = '22:30';
    不歸零的話今天第 3 位客人按下去會直接跳 COMBO 3。 */
 export const COMBO_RESET_MS = 30000;
 
-const DEFAULTS = {
+const STORE_DEFAULTS = {
   character: 'ricebowl',
-  store: 'tainan',
-  latency: 400,        // 模擬 SwitchProgram 來回要幾毫秒
-  clockMode: 'real',   // real | fixed
-  fixedMin: 12 * 60,   // clockMode=fixed 時停在哪一分
+  latency: 400,          // 模擬 SwitchProgram 來回要幾毫秒
+  clockMode: 'real',     // real | fixed
+  fixedMin: 12 * 60,
+  bogoText: '1 + 1',
+  bogoDate: '9/1-9/2',
+  bonusText: 'GOLDEN BOWL UNLOCKED!',
+  eveningText: '',
   combo: 0,
   comboAt: 0,
+  lastEvent: '',
+  lastEventAt: 0,
 };
+
+/* 各店檔期不同，預設值也要不同 —— 一開就是對的，比較不會被漏改。 */
+const STORE_SEED = {
+  taichung: { bogoDate: '9/1-9/2' },
+  tainan:   { bogoDate: '9/2-9/3' },
+  test:     { bogoDate: '9/1-9/2', latency: 200 },
+};
+
+export function storeById(id) {
+  return STORES.find(s => s.id === id) || STORES[1];
+}
 
 export function hhmm(min) {
   return String(Math.floor(min / 60)).padStart(2, '0') + ':' +
@@ -64,16 +100,28 @@ export function toMin(s) {
   return h * 60 + m;
 }
 
-export function loadState() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(LS) || '{}') }; }
-  catch (e) { return { ...DEFAULTS }; }
+/* ---------------------------------------------------------------- 狀態
+   每一家店有自己的一份。第一版是所有店共用一份，那是錯的 ——
+   後台要看的就是「各店各自什麼狀況」。 */
+function readAll() {
+  let raw = {};
+  try { raw = JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) {}
+  const out = {};
+  for (const s of STORES) {
+    out[s.id] = { ...STORE_DEFAULTS, ...(STORE_SEED[s.id] || {}), ...(raw[s.id] || {}) };
+  }
+  return out;
 }
 
-export function saveState(s) {
-  try { localStorage.setItem(LS, JSON.stringify(s)); } catch (e) {}
+export function loadStore(id) { return readAll()[id] || { ...STORE_DEFAULTS }; }
+export function loadAll() { return readAll(); }
+
+export function saveStore(id, st) {
+  const all = readAll();
+  all[id] = st;
+  try { localStorage.setItem(LS, JSON.stringify(all)); } catch (e) {}
 }
 
-/* 現在幾點（分鐘）。fixed 模式是為了不用等到晚上七點才看得到晚間那段。 */
 export function nowMin(st) {
   if (st.clockMode === 'fixed') return st.fixedMin;
   const d = new Date();
@@ -90,12 +138,14 @@ export function videoSrc(key, character) {
   return `preview/${key}_${character}.mp4`;
 }
 
-/* ---------------------------------------------------------------- 訊息 */
+/* ---------------------------------------------------------------- 訊息
+   每一則都帶 store id。沒有 id 的訊息會讓三個端一起動，
+   那就變回第一版那個「全部共用一份」的錯誤了。 */
 export function bus() {
   const ch = new BroadcastChannel(CH);
   return {
-    send(type, data) { ch.postMessage({ type, data, at: Date.now() }); },
-    on(fn) { ch.onmessage = e => fn(e.data.type, e.data.data); },
+    send(type, id, data) { ch.postMessage({ type, id, data, at: Date.now() }); },
+    on(fn) { ch.onmessage = e => fn(e.data.type, e.data.id, e.data.data); },
   };
 }
 
@@ -108,4 +158,15 @@ export function bumpCombo(st) {
   st.combo = n;
   st.comboAt = now;
   return n;
+}
+
+/* 影片自己播。<video autoplay> 是「瀏覽器願意的時候才播」，
+   模擬頁不能賭這個 —— 載入時踢一次，使用者第一次碰畫面再補一次。 */
+export function keepPlaying(root = document) {
+  const kick = () => root.querySelectorAll('video')
+    .forEach(v => v.play().catch(() => {}));
+  addEventListener('load', kick);
+  addEventListener('pointerdown', kick, { once: true });
+  setTimeout(kick, 300);
+  return kick;
 }

@@ -4,145 +4,169 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>OKAWARI 門頭屏 · 屏</title>
+<title>OKAWARI · 店端</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1010'/><rect x='4' y='13' width='24' height='6' rx='1' fill='%23f7b32b'/></svg>">
+<link rel="stylesheet" href="ui.css">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0908;--dim:#6f625b;--ink:#f6efe8;--yel:#f7b32b;--line:#2a221e}
-html,body{height:100%}
-body{
-  background:var(--bg);color:var(--ink);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:22px;padding:24px;
-  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
-}
-
-/* 屏體。外面那圈是箱體，不是畫面 —— 業主要看的是「掛在門口長什麼樣」，
-   直接貼一支影片在白底上是看不出感覺的。 */
-.rig{width:100%;max-width:1180px}
-.box{
-  background:#151110;border:1px solid #322a26;border-radius:14px;
-  padding:14px;box-shadow:0 30px 80px #000a, inset 0 1px 0 #ffffff08;
-}
-.panel{position:relative;background:#000;border-radius:4px;overflow:hidden;
-  outline:1px solid #000;box-shadow:inset 0 0 0 2px #0d0b0a}
-.panel video{display:block;width:100%;height:auto;image-rendering:pixelated}
-
-/* LED 點陣。P4 的燈珠之間是有黑格的，加這一層才像實體屏不像電視。 */
-.grid{position:absolute;inset:0;pointer-events:none;opacity:.42;
-  background-image:
-    repeating-linear-gradient(to right,#0000 0 3px,#0006 3px 4px),
-    repeating-linear-gradient(to bottom,#0000 0 3px,#0006 3px 4px)}
-.off{position:absolute;inset:0;background:#000;display:none;
-  align-items:center;justify-content:center;color:#3a322c;font-size:13px;
-  letter-spacing:.2em}
-.panel.dark .off{display:flex}
-
-.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-  justify-content:center;color:var(--dim);font-size:13px}
-.pill{border:1px solid var(--line);border-radius:20px;padding:4px 13px;
-  font-variant-numeric:tabular-nums}
-.pill b{color:var(--ink);font-weight:600}
-.pill.live{border-color:#5a4420;color:var(--yel)}
-.hint{color:#544a44;font-size:12.5px;text-align:center;max-width:620px}
-.hint a{color:var(--yel)}
-
-/* 切節目的那一下。真機不是瞬間切換，這裡照 latency 演出來。 */
-.panel.switching video{opacity:.15;transition:opacity .08s}
-.panel video{transition:opacity .12s}
+body{padding-bottom:40px}
+.wrap{max-width:1120px}
+.stage{margin:8px 0 22px}
 </style>
 </head>
 <body>
 
-<div class="rig">
-  <div class="box">
-    <div class="panel" id="panel">
-      <video id="v" autoplay loop muted playsinline></video>
-      <div class="grid"></div>
-      <div class="off">已 打 烊</div>
+<header><div class="wrap">
+  <div class="crumb"><a href="console.html">後台</a> ／ 店端</div>
+  <div class="brand"><i></i>OKAWARI 門頭屏</div>
+  <h1 id="title">—</h1>
+  <p class="sub" id="sub">—</p>
+</div></header>
+
+<div class="wrap">
+
+  <div class="stage">
+    <div class="box">
+      <div class="panel" id="panel">
+        <video id="v" autoplay loop muted playsinline></video>
+        <div class="grid"></div>
+        <div class="off">已 打 烊</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <span class="pill">現在 <b id="clock" style="color:var(--ink)">--:--</b></span>
+      <span class="pill" id="segpill">—</span>
+      <span class="pill" id="canvaspill">—</span>
     </div>
   </div>
-</div>
 
-<div class="bar">
-  <span class="pill">現在 <b id="clock">--:--</b></span>
-  <span class="pill" id="segpill">—</span>
-  <span class="pill" id="storepill">—</span>
-  <span class="pill" id="charpill">—</span>
-</div>
+  <div class="card">
+    <h2>店內按鈕</h2>
+    <div class="row">
+      <button class="big cust" onclick="fireCombo()">
+        續飯按鈕<br><span style="font-weight:500;font-size:13.5px">客人按・櫃檯外側</span>
+      </button>
+      <button class="big staff" onclick="fire('bonus')">
+        滿額 1000<br><span style="font-weight:500;font-size:13.5px">店員按・櫃檯內側</span>
+      </button>
+    </div>
+    <div class="combo">
+      <div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div>
+    </div>
+    <p class="note" id="combonote">續飯按第 0 次。30 秒沒人按就歸零。</p>
+    <p class="note">
+      <b>按鈕在店裡，不在後台。</b>
+      客人續飯是在櫃檯按的，訊號進店內那台小主機，主機對自己那張卡送
+      SwitchProgram —— 不會繞去總部再回來。所以這兩顆長在這一頁，
+      後台頁上沒有。
+    </p>
+    <div class="row" style="margin-top:12px">
+      <button class="ghost" onclick="fire('bogo')">試播：買一送一</button>
+      <button class="ghost" onclick="resetCombo()">COMBO 歸零</button>
+      <button class="ghost" onclick="location.href='store.html?id='+ID">這家店的設定 →</button>
+    </div>
+  </div>
 
-<p class="hint" id="hint">
-  這一頁是「屏」。把 <a href="console.html">後台</a> 開在另一個視窗，
-  在那邊按按鈕，這裡就會跟著動。
-</p>
+  <div class="card">
+    <h2>這一端的紀錄</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+</div>
 
 <script type="module">
-import { SEGMENTS, EVENTS, STORES, OPEN_AT, CLOSE_AT,
-         loadState, saveState, nowMin, segmentAt, videoSrc, hhmm, bus }
+import { EVENTS, STORES, storeById, loadStore, saveStore, nowMin, segmentAt,
+         videoSrc, hhmm, bumpCombo, bus, keepPlaying, COMBO_RESET_MS, CLOSE_AT }
   from './sim.js';
 
 const $ = id => document.getElementById(id);
-const panel = $('panel'), v = $('v');
 const B = bus();
+const ID = new URLSearchParams(location.search).get('id') || 'tainan';
+window.ID = ID;
 
-let st = loadState();
-let playing = null;        // 現在畫面上是哪一段
-let eventUntil = 0;        // 事件播完的時間戳，之前不讓時段搶回去
+const S = storeById(ID);
+let st = loadStore(ID);
+let playing = null, eventUntil = 0;
 
-function store() {
-  return STORES.find(s => s.id === st.store) || STORES[1];
+$('title').textContent = S.short + '　' + S.name;
+$('sub').textContent = S.where + '　畫布 ' + S.w + ' × ' + S.h +
+  (S.mirrorOf ? '（' + storeById(S.mirrorOf).short + '縮小後取中段，不是獨立設計）' : '');
+$('canvaspill').textContent = S.w + '×' + S.h;
+
+const panel = $('panel'), v = $('v');
+panel.style.aspectRatio = S.w + ' / ' + S.h;
+if (S.mirrorOf) panel.classList.add('mirror');
+const kick = keepPlaying();
+
+function log(msg) {
+  const t = new Date().toTimeString().slice(0, 8);
+  $('log').innerHTML = `<div>${t}　${msg}</div>` + $('log').innerHTML;
 }
 
 /* 切畫面。真機的 SwitchProgram 有來回延遲，這裡照 latency 演 ——
    模擬的重點就是「按下去到畫面動」中間那一段感覺，不能省。 */
 function show(key, holdMs) {
-  const src = videoSrc(key, st.character);
   if (playing === key && !holdMs) return;
   playing = key;
   panel.classList.add('switching');
   setTimeout(() => {
-    v.src = src;
-    v.load();
-    v.play().catch(() => {});
+    v.src = videoSrc(key, st.character);
+    v.load(); v.play().catch(() => {});
     panel.classList.remove('switching');
   }, Math.max(0, st.latency));
   if (holdMs) eventUntil = Date.now() + st.latency + holdMs;
 }
 
+function fire(key) {
+  const e = EVENTS[key];
+  st.lastEvent = e.name;
+  st.lastEventAt = Date.now();
+  saveStore(ID, st);
+  B.send('event', ID, { key });            // 讓後台看得到這一端剛剛發生什麼
+  $('segpill').innerHTML = '觸發：<b style="color:var(--yel)">' + e.name + '</b>';
+  $('segpill').className = 'pill live';
+  show(key, e.secs * 1000);
+  log(`觸發 <b>${e.name}</b>（${e.who}）　延遲 ${st.latency} ms　播 ${e.secs} 秒`);
+}
+window.fire = fire;
+
+window.fireCombo = () => { const n = bumpCombo(st); saveStore(ID, st); paintCombo(); fire('combo' + n); };
+window.resetCombo = () => { st.combo = 0; st.comboAt = 0; saveStore(ID, st); paintCombo(); log('COMBO 歸零'); };
+
+function paintCombo() {
+  const n = (Date.now() - st.comboAt > COMBO_RESET_MS) ? 0 : st.combo;
+  for (let i = 1; i <= 3; i++) $('d' + i).classList.toggle('on', n >= i);
+  $('combonote').textContent = `續飯按第 ${n} 次。30 秒沒人按就歸零。`;
+}
+
 function tick() {
-  st = loadState();
+  st = loadStore(ID);
   const min = nowMin(st);
   $('clock').textContent = hhmm(min);
-  $('storepill').textContent = store().name + '　' + store().w + '×' + store().h;
-  $('charpill').textContent = st.character === 'person' ? '主角：人物' : '主角：小飯碗';
-
-  // 屏的長寬比按門店走。兩店差 8%，不做的話模擬會騙人。
-  panel.style.aspectRatio = store().w + ' / ' + store().h;
+  paintCombo();
 
   const seg = segmentAt(min);
   panel.classList.toggle('dark', !seg);
-
-  if (Date.now() < eventUntil) return;      // 事件還在播，別搶
-  if (!seg) { $('segpill').textContent = '打烊（' + CLOSE_AT + ' 關屏）';
-              $('segpill').className = 'pill'; return; }
-
-  $('segpill').innerHTML = '常駐：<b>' + seg.name + '</b>';
-  $('segpill').className = 'pill';
+  if (Date.now() < eventUntil) return;          // 事件還在播，別搶
+  if (!seg) {
+    $('segpill').textContent = '打烊（' + CLOSE_AT + ' 關屏）';
+    $('segpill').className = 'pill off';
+    return;
+  }
+  $('segpill').innerHTML = '常駐：<b style="color:var(--ink)">' + seg.name + '</b>';
+  $('segpill').className = 'pill on';
   show(seg.key);
+  kick();
 }
 
-B.on((type, data) => {
-  if (type === 'fire') {
-    const e = EVENTS[data.key];
-    if (!e) return;
-    $('segpill').innerHTML = '觸發：<b>' + e.name + '</b>';
-    $('segpill').className = 'pill live';
-    show(data.key, e.secs * 1000);
-  }
-  if (type === 'state') { st = loadState(); playing = null; tick(); }
+/* 後台改了這家店的設定 → 這一端要立刻反應。別家店的訊息不理。 */
+B.on((type, id) => {
+  if (id !== ID) return;
+  if (type === 'settings') { st = loadStore(ID); playing = null; tick(); log('後台更新了設定'); }
 });
 
 setInterval(tick, 500);
 tick();
+log(S.short + ' 就緒。');
 </script>
 </body>
 </html>
