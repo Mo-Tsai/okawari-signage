@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OKAWARI 門頭屏 · 屏</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1010'/><rect x='4' y='13' width='24' height='6' rx='1' fill='%23f7b32b'/></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0908;--dim:#6f625b;--ink:#f6efe8;--yel:#f7b32b;--line:#2a221e}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--ink);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:22px;padding:24px;
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+
+/* 屏體。外面那圈是箱體，不是畫面 —— 業主要看的是「掛在門口長什麼樣」，
+   直接貼一支影片在白底上是看不出感覺的。 */
+.rig{width:100%;max-width:1180px}
+.box{
+  background:#151110;border:1px solid #322a26;border-radius:14px;
+  padding:14px;box-shadow:0 30px 80px #000a, inset 0 1px 0 #ffffff08;
+}
+.panel{position:relative;background:#000;border-radius:4px;overflow:hidden;
+  outline:1px solid #000;box-shadow:inset 0 0 0 2px #0d0b0a}
+.panel video{display:block;width:100%;height:auto;image-rendering:pixelated}
+
+/* LED 點陣。P4 的燈珠之間是有黑格的，加這一層才像實體屏不像電視。 */
+.grid{position:absolute;inset:0;pointer-events:none;opacity:.42;
+  background-image:
+    repeating-linear-gradient(to right,#0000 0 3px,#0006 3px 4px),
+    repeating-linear-gradient(to bottom,#0000 0 3px,#0006 3px 4px)}
+.off{position:absolute;inset:0;background:#000;display:none;
+  align-items:center;justify-content:center;color:#3a322c;font-size:13px;
+  letter-spacing:.2em}
+.panel.dark .off{display:flex}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  justify-content:center;color:var(--dim);font-size:13px}
+.pill{border:1px solid var(--line);border-radius:20px;padding:4px 13px;
+  font-variant-numeric:tabular-nums}
+.pill b{color:var(--ink);font-weight:600}
+.pill.live{border-color:#5a4420;color:var(--yel)}
+.hint{color:#544a44;font-size:12.5px;text-align:center;max-width:620px}
+.hint a{color:var(--yel)}
+
+/* 切節目的那一下。真機不是瞬間切換，這裡照 latency 演出來。 */
+.panel.switching video{opacity:.15;transition:opacity .08s}
+.panel video{transition:opacity .12s}
+</style>
+</head>
+<body>
+
+<div class="rig">
+  <div class="box">
+    <div class="panel" id="panel">
+      <video id="v" autoplay loop muted playsinline></video>
+      <div class="grid"></div>
+      <div class="off">已 打 烊</div>
+    </div>
+  </div>
+</div>
+
+<div class="bar">
+  <span class="pill">現在 <b id="clock">--:--</b></span>
+  <span class="pill" id="segpill">—</span>
+  <span class="pill" id="storepill">—</span>
+  <span class="pill" id="charpill">—</span>
+</div>
+
+<p class="hint" id="hint">
+  這一頁是「屏」。把 <a href="console.html">後台</a> 開在另一個視窗，
+  在那邊按按鈕，這裡就會跟著動。
+</p>
+
+<script type="module">
+import { SEGMENTS, EVENTS, STORES, OPEN_AT, CLOSE_AT,
+         loadState, saveState, nowMin, segmentAt, videoSrc, hhmm, bus }
+  from './sim.js';
+
+const $ = id => document.getElementById(id);
+const panel = $('panel'), v = $('v');
+const B = bus();
+
+let st = loadState();
+let playing = null;        // 現在畫面上是哪一段
+let eventUntil = 0;        // 事件播完的時間戳，之前不讓時段搶回去
+
+function store() {
+  return STORES.find(s => s.id === st.store) || STORES[1];
+}
+
+/* 切畫面。真機的 SwitchProgram 有來回延遲，這裡照 latency 演 ——
+   模擬的重點就是「按下去到畫面動」中間那一段感覺，不能省。 */
+function show(key, holdMs) {
+  const src = videoSrc(key, st.character);
+  if (playing === key && !holdMs) return;
+  playing = key;
+  panel.classList.add('switching');
+  setTimeout(() => {
+    v.src = src;
+    v.load();
+    v.play().catch(() => {});
+    panel.classList.remove('switching');
+  }, Math.max(0, st.latency));
+  if (holdMs) eventUntil = Date.now() + st.latency + holdMs;
+}
+
+function tick() {
+  st = loadState();
+  const min = nowMin(st);
+  $('clock').textContent = hhmm(min);
+  $('storepill').textContent = store().name + '　' + store().w + '×' + store().h;
+  $('charpill').textContent = st.character === 'person' ? '主角：人物' : '主角：小飯碗';
+
+  // 屏的長寬比按門店走。兩店差 8%，不做的話模擬會騙人。
+  panel.style.aspectRatio = store().w + ' / ' + store().h;
+
+  const seg = segmentAt(min);
+  panel.classList.toggle('dark', !seg);
+
+  if (Date.now() < eventUntil) return;      // 事件還在播，別搶
+  if (!seg) { $('segpill').textContent = '打烊（' + CLOSE_AT + ' 關屏）';
+              $('segpill').className = 'pill'; return; }
+
+  $('segpill').innerHTML = '常駐：<b>' + seg.name + '</b>';
+  $('segpill').className = 'pill';
+  show(seg.key);
+}
+
+B.on((type, data) => {
+  if (type === 'fire') {
+    const e = EVENTS[data.key];
+    if (!e) return;
+    $('segpill').innerHTML = '觸發：<b>' + e.name + '</b>';
+    $('segpill').className = 'pill live';
+    show(data.key, e.secs * 1000);
+  }
+  if (type === 'state') { st = loadState(); playing = null; tick(); }
+});
+
+setInterval(tick, 500);
+tick();
+</script>
+</body>
+</html>

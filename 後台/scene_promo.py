@@ -21,7 +21,8 @@ PROPS = sa.PROPS
 
 
 # ---------------------------------------------------------------- 滿額 1000
-# 客戶 2026-08-18：小勇士與巨石對峙 → 劈開 → 稀有金飯碗升起 → GOLDEN BOWL UNLOCKED!
+# 客戶 2026-08-18／19：小飯碗拿刀與巨石對峙 → 切開 → 稀有金飯碗升起
+# → GOLDEN BOWL UNLOCKED!
 # 店員觸發（消費滿 1000）。
 #
 # 客戶原文有「高高跳起使出最後一擊」和「金飯碗慢慢升起」——
@@ -50,36 +51,42 @@ STONE_HALF = [                     # 劈開後的半邊，右半用 flip
     "..DDDD",
 ]
 
-# 劍要畫得比直覺大。在 120 px 高的屏上，照真實比例的劍只有幾個像素寬，
-# 遠看是一根牙籤 —— 分不出是武器還是箭頭。所以刀身加粗、護手畫滿。
-SWORD_UP = [                       # 舉起來
-    ".KWWK.",
-    ".KWWK.",
-    ".KWWK.",
-    ".KWWK.",
-    ".KWWK.",
-    "KYYYYK",                      # 護手
-    "..YY..",
-    "..KK..",                      # 握把
+# 拿的是**刀**不是劍。2026-08-19 業主：切的人是小飯碗，不是人物。
+# 一碗飯舉著騎士劍很怪，菜刀才對 —— 而且菜刀是塊狀的，
+# 在 P4 屏上遠看比細長的劍好認得多。
+# 刀是**橫握**的，不是舉直的。
+# 舉直的白刀身在 120 px 高的屏上就是一面白旗 —— 看不出是刀，
+# 而且跟小飯碗的手接不起來（它的手是從碗身兩側伸出來的，舉不高）。
+# 橫握還有一個好處：刀尖直接指著石頭，對峙那一拍不用再解釋。
+KNIFE_READY = [                    # 舉著，刀尖指向石頭
+    "..KK........",
+    ".KBBK.......",
+    ".KBBKKKKKKKK",                # 刀背
+    ".KBBKWWWWWWW",
+    ".KBBKWWWWWWW",
+    "..KK.KKKKKKK",                # 刃口
 ]
-SWORD_CUT = [                      # 劈下去，刀身往石頭那邊伸
-    "KK..........",
-    "YYKWWWWWWWWK",
-    "YYKWWWWWWWWK",
-    "KK..........",
-]
+KNIFE_CUT = KNIFE_READY            # 同一把刀，差別在高度和那道光痕
 
-# 金飯碗。描一圈深色邊 —— 金色和背景的紅橙是鄰近色，
-# 不描邊的話在 LED 上會糊成一片，看不出是一個碗。
-GOLD_BOWL = [
-    ".KYYYYYYK.",
-    "KYWWYYYYYK",
-    "KYYYYYYYYK",
-    "KYYYYYYYYK",
-    ".KYYYYYYK.",
-    "..KYYYYK..",
-    "...KKKK...",
-]
+# 金飯碗。2026-08-19 業主：劈開來要是「跟小飯碗一樣的角色，但是金色的」。
+#
+# 所以它不是一個道具碗，是**小飯碗本人的稀有版** —— 同一張 sprite、
+# 同一組姿勢，只換配色。這樣一來：
+#   1. 客人一眼認得出「那是小飯碗」，稀有感才有對照組
+#   2. 它會走、會跳、會歡呼，因為姿勢表本來就有
+#   3. 之後小飯碗改造型，金色版自動跟著改，不會有兩套要維護
+#
+# 配色是整組換金，只留白色高光和深色描邊。金色跟背景的紅橙是鄰近色，
+# 描邊不能省 —— 不描邊在 LED 上會糊成一團，看不出輪廓。
+GOLD_PAL = {
+    "K": ( 26,  23,  33),   # 描邊，照原本的
+    "W": (255, 198, 56),    # 碗身：白 → 金（要夠亮，背景壓暗才拉得開）
+    "R": (198, 132, 22),    # 碗緣：紅 → 深金（要比碗身暗，不然邊界不見）
+    "M": (176, 118, 20),    # 肉片 → 暗金
+    "N": (222, 168, 46),    # 蔥花 → 中金
+    "S": (255, 226, 138),   # 手腳 → 亮金
+    "Y": (255, 253, 246),   # 高光 → 純白，這是「閃」的來源
+}
 
 
 def render_bonus(cols, rows, p=None):
@@ -90,8 +97,13 @@ def render_bonus(cols, rows, p=None):
     """
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
-    SP = sa._ch(q)
     n = artwork.frame_count(q, "bonus")
+
+    # ★ 這一段兩個角色都是小飯碗，不跟著 params.character 換。
+    #   2026-08-19 業主：「不是那個人物，是小飯碗，拿著刀子切下去變成金飯碗。」
+    #   拿刀的是白的那隻，石頭裂開之後升起來的是金的那隻 —— 同一張 sprite、
+    #   只有配色不同，所以「那是小飯碗的稀有版」一眼就讀得出來。
+    SP = sa.ricebowl_sprite
 
     spr = SP.POSES["stand"]
     s = sa._scale(len(spr), rows, q)
@@ -105,22 +117,28 @@ def render_bonus(cols, rows, p=None):
     st_y = floor - st_h
 
     hero_x = st_x - sw - s * 2
-    gb_s = max(1, int(rows * 0.62 / len(GOLD_BOWL)))
-    gb_w, gb_h = len(GOLD_BOWL[0]) * gb_s, len(GOLD_BOWL) * gb_s
+
+    # 金飯碗＝同一隻小飯碗的稀有版。要認得出「是同一個角色」，
+    # 稀有感才有對照組 —— 換一隻沒看過的角色反而沒有升級的感覺。
+    GB = SP                                            # 就是小飯碗本人
+    gb_pose = GB.POSES["stand"]
+    gb_s = max(1, int(rows * 0.88 / len(gb_pose)))     # 比白的那隻大一圈，它是主角
+    gb_w = max(len(r) for r in gb_pose) * gb_s
+    gb_h = len(gb_pose) * gb_s
 
     # 劍不跟角色同一個比例。照角色比例縮，劍只有兩三個像素寬，
     # 在 P4 屏上遠看就是一根牙籤 —— 分不出是武器。
-    sd = max(1, int(s * 1.4))
-    sx = hero_x + sw - s
-    # 舉劍：刀尖要高過頭頂。放在胸口高度的話遠看是一塊白板，不是舉起來的劍。
-    sy_up = floor - sh + 2 * s - len(SWORD_UP) * sd
-    sy_cut = floor - int(sh * 0.55)
+    sd = max(1, int(sh * 0.42 / len(KNIFE_READY)))
+    sx = hero_x + int(sw * 0.78)
+    # 刀柄要落在手上。小飯碗的手從碗身兩側伸出來，大約在身高四成的位置。
+    sy_up = floor - sh + int(sh * 0.30)
+    sy_cut = floor - sh + int(sh * 0.52)
 
-    def sword(d, up, dx=0, dy=0):
+    def knife(d, up, dx=0, dy=0):
         if up:
-            sa._blit_prop(d, SWORD_UP, sx + dx, sy_up + dy, sd)
+            sa._blit_prop(d, KNIFE_READY, sx + dx, sy_up + dy, sd)
         else:
-            sa._blit_prop(d, SWORD_CUT, sx + dx, sy_cut + dy, sd)
+            sa._blit_prop(d, KNIFE_CUT, sx + dx, sy_cut + dy, sd)
 
     def slash(d, y):
         """劈下去的光痕。刀身本身動得太快看不清楚，靠這道斜線交代軌跡。"""
@@ -134,7 +152,10 @@ def render_bonus(cols, rows, p=None):
         # 落地那一下整個畫面震。只震三格，久了會像訊號不良。
         shake = sa._shake(i, max(1, s), period=1) if 0.50 < t < 0.56 else 0
 
-        im = sc.gradient(phase=0.10 + 0.04 * t)
+        # 石破之後背景壓暗。金色和背景的紅橙是鄰近色 —— 不壓暗，
+        # 金飯碗會整隻融進去（第一版就是這樣，完全看不到）。
+        # 壓暗同時也剛好是「聚光燈打在稀有道具上」的語言。
+        im = sc.gradient(phase=0.10 + 0.04 * t, dim=t >= 0.56)
         d = ImageDraw.Draw(im)
 
         # 石縫的金光：全程脈動，愈接近劈開愈亮
@@ -148,12 +169,12 @@ def render_bonus(cols, rows, p=None):
 
         if t < 0.10:
             # 對峙。兩邊都不動，畫面只有石縫在呼吸。
-            sa._blit(d, SP.POSES["stand"], hero_x, floor - sh, s, SP.PAL)
-            sword(d, True)
+            sa._blit(d, SP.POSES["cheer"], hero_x, floor - sh, s, SP.PAL)
+            knife(d, True)
 
         elif t < 0.18:
-            sa._blit(d, SP.POSES["stand"], hero_x, floor - sh, s, SP.PAL)
-            sword(d, True)
+            sa._blit(d, SP.POSES["cheer"], hero_x, floor - sh, s, SP.PAL)
+            knife(d, True)
             sa._text_at(im, "!?", hero_x + sw, floor - sh - txt, txt, artwork.WHT)
 
         elif t < 0.34:
@@ -162,7 +183,7 @@ def render_bonus(cols, rows, p=None):
             cut = (i // 4) % 2 == 0
             sa._blit(d, SP.POSES["cheer"] if cut else SP.POSES["stand"],
                      hero_x, floor - sh, s, SP.PAL)
-            sword(d, not cut)
+            knife(d, not cut)
             if cut:
                 slash(d, sy_cut)
                 sa._spark(d, st_x + st_w // 2, st_y + st_h // 2,
@@ -175,8 +196,8 @@ def render_bonus(cols, rows, p=None):
             # 退一步蓄力。這一拍不能省 —— 沒有蓄力，最後一擊就沒有重量。
             k = (t - 0.34) / 0.10
             back = int(k * s * 4)
-            sa._blit(d, SP.POSES["stand"], hero_x - back, floor - sh, s, SP.PAL)
-            sword(d, True, dx=-back, dy=-int(k * s * 2))
+            sa._blit(d, SP.POSES["cheer"], hero_x - back, floor - sh, s, SP.PAL)
+            knife(d, True, dx=-back, dy=-int(k * s * 2))
 
         elif t < 0.56:
             # 跳起來、劈下去。BOOM!
@@ -184,7 +205,7 @@ def render_bonus(cols, rows, p=None):
             hop = -int(math.sin(min(1.0, k * 1.6) * math.pi) * rows * 0.30)
             sa._blit(d, SP.POSES["cheer"], hero_x + int(k * s * 4),
                      floor - sh + hop, s, SP.PAL)
-            sword(d, False, dx=int(k * s * 4), dy=hop)
+            knife(d, False, dx=int(k * s * 4), dy=hop)
             slash(d, sy_cut + hop)
             if k > 0.5:
                 sa._text_at(im, "BOOM!", int(cols * 0.06), int(rows * 0.24),
@@ -204,24 +225,53 @@ def render_bonus(cols, rows, p=None):
             rise = int(max(0.0, 1.0 - k * 3.0) * gb_h)
             gx = cx - gb_w // 2
             gy = floor - gb_h + rise
-            bob = -int(s * 1.2) if (k > 0.42 and (i // 5) % 2 == 0) else 0
-            wob = sa._shake(i, max(1, s), period=7) if k > 0.42 else 0
-            sa._blit_prop(d, GOLD_BOWL, gx + wob, gy + bob, gb_s)
+
+            if k <= 0.42:
+                # 還在升起。站著不動，讓「冒出來」這件事單獨講完。
+                sa._blit(d, gb_pose, gx, gy, gb_s, GOLD_PAL)
+            else:
+                # 升上來之後開始跳舞。左右晃 + 上下彈 + 換腳，
+                # 三件事同時做才像在跳，只做一件會像卡住。
+                step = (i // 5) % 4
+                pose = GB.POSES["walk_a" if step % 2 == 0 else "walk_b"]
+                bob = -int(gb_s * 1.6) if step in (1, 3) else 0
+                wob = sa._shake(i, gb_s, period=5)
+                sa._blit(d, pose, gx + wob, gy + bob, gb_s, GOLD_PAL,
+                         flip=step >= 2)
+                # 閃光：三顆星輪流在碗身周圍亮，這是「閃閃發亮」那句
+                for j in range(3):
+                    u = ((i * 0.7) + j * 5) % 15 / 15.0
+                    if u > 0.55:
+                        continue
+                    a = (j / 3.0) * math.tau + i * 0.12
+                    px = int(gx + gb_w / 2 + math.cos(a) * gb_w * 0.62)
+                    py = int(gy + gb_h / 2 + math.sin(a) * gb_h * 0.52)
+                    d.rectangle([px, py, px + gb_s - 1, py + gb_s - 1],
+                                fill=PROPS.PAL["W"])
 
             sa._confetti(d, cols, rows, 11, min(1.0, k * 1.4), 0.56, count=70)
 
-            # 小勇士先愣一下，再舉劍歡呼。愣的那一拍是笑點，不要砍掉。
+            # 白的那隻先愣一下，再舉刀歡呼。愣的那一拍是笑點，不要砍掉。
+            # 金飯碗比白的那隻大一圈，站原位會把它擋掉。讓它往左退開。
+            step_back = int(min(1.0, k * 4) * sw * 0.55)
             if k < 0.24:
-                sa._blit(d, SP.POSES["stand"], hero_x, floor - sh, s, SP.PAL)
-                sword(d, True)
+                # 愣住那一拍靠「不動」表達，不是靠換姿勢 ——
+                # 換回 stand 手會垂下來，劍就脫手了。
+                sa._blit(d, SP.POSES["cheer"], hero_x - step_back, floor - sh,
+                         s, SP.PAL)
+                knife(d, True, dx=-step_back)
             else:
                 cbob = -s if (i // 5) % 2 == 0 else 0
-                sa._blit(d, SP.POSES["cheer"], hero_x, floor - sh + cbob, s, SP.PAL)
-                sword(d, True, dy=cbob)
+                sa._blit(d, SP.POSES["cheer"], hero_x - step_back,
+                         floor - sh + cbob, s, SP.PAL)
+                knife(d, True, dx=-step_back, dy=cbob)
 
             if k > 0.44:
+                # 縮一階、擺到左上角。用原本的大小會壓在白飯碗身上，
+                # 兩個東西疊在一起，字讀不出來、角色也看不清楚。
                 sa._text_at(im, str(q.get("bonus_text") or "GOLDEN BOWL UNLOCKED!"),
-                            int(cols * 0.04), int(rows * 0.20), txt, artwork.YEL)
+                            int(cols * 0.03), int(rows * 0.06),
+                            max(8, round(rows * 0.22)), artwork.YEL)
         out.append(im)
     return out
 
