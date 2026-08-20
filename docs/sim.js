@@ -160,8 +160,9 @@ export function bumpCombo(st) {
   return n;
 }
 
-/* 影片自己播。<video autoplay> 是「瀏覽器願意的時候才播」，
-   模擬頁不能賭這個 —— 載入時踢一次，使用者第一次碰畫面再補一次。 */
+/* 影片自己播。autoplay muted 本身有效，但分頁切到背景時
+   瀏覽器會暫停省電，回到前景不一定自己續播。
+   所以每次 tick 補踢一下，切回來就會繼續動。 */
 export function keepPlaying(root = document) {
   const kick = () => root.querySelectorAll('video')
     .forEach(v => v.play().catch(() => {}));

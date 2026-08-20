@@ -293,11 +293,11 @@ footer{padding:40px 0;text-align:center;color:var(--dim2);font-size:13px}
 
 <script>
 /* 影片自己播。
-   原本靠 <video autoplay>，但那個是「瀏覽器願意的時候才播」——
-   剛剛實測拿掉主角切換的 script 之後，九段全部停在第一幀。
-   因為以前是那支 script 在 setChar 裡呼叫 play()，把它們踢起來的。
-   給客戶看的頁面不能賭瀏覽器的心情，所以自己踢：
-   載入時試一次，使用者第一次捲動或點畫面再補一次。 */
+   <video autoplay muted> 本身是有效的（實測會播），
+   但有兩種情況會停下來：分頁切到背景時瀏覽器會暫停省電，
+   以及少數瀏覽器要有使用者動作過才准播。
+   給客戶看的頁面不能賭這個，所以自己補踢：
+   載入時一次，使用者第一次捲動或點畫面再一次。 */
 function playAll(){
   document.querySelectorAll('video').forEach(v => { v.play().catch(()=>{}); });
 }
