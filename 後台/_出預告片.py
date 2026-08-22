@@ -72,7 +72,7 @@ FORMATS = {
     "post": (270, 338),            # 1080×1352　IG 貼文 4:5
 }
 
-REVEAL_TEXT = "8/26"               # 布條和下緣小字都用這個
+REVEAL_TEXT = "9/1"                # 布條和下緣小字都用這個
 
 BACK = [fs.ONSEN_CH, fs.CURRY_CH, fs.KARAAGE_CH, fs.BASQUE_CH]
 MID = [fs.UDON_CH, fs.PURIN_CH]
