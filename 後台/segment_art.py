@@ -70,6 +70,36 @@ def _scale(rows, canvas_h, p):
     return max(1, round(canvas_h * p["hero_scale"] / rows))
 
 
+def _lineup(chars, cols, rows, q, scale=1.0, left=0.0, right=1.0, gap=None):
+    """把一排角色平均擺進 [left, right] 這條帶子（比例）。
+
+    回傳 [(角色, x, 每格幾px, 寬, 高)]，x 是那一隻的左緣。
+
+    每一隻的比例各算各的 —— 咖哩飯 11 列、人物 28 列，共用一個 s 的話
+    矮的會縮成一團、高的會爆出畫布上緣。scale 是相對 hero_scale 的倍率，
+    要排一整排的時候得縮，不然八隻在 960 上排不下。
+
+    塞不下就讓 gap 變 0 往右溢出，而不是把最後一隻切掉一半 ——
+    呼叫端可以看回傳值自己決定要不要再縮。
+    """
+    box = []
+    for c in chars:
+        pose = c.POSES["stand"]
+        s = max(1, round(rows * q["hero_scale"] * scale / len(pose)))
+        box.append((c, s, max(len(r) for r in pose) * s, len(pose) * s))
+
+    x0, x1 = int(cols * left), int(cols * right)
+    used = sum(b[2] for b in box)
+    lead = max(1, len(box) - 1)
+    g = gap if gap is not None else max(0, (x1 - x0 - used) // lead)
+
+    out, x = [], x0
+    for c, s, w, h in box:
+        out.append((c, x, s, w, h))
+        x += w + g
+    return out
+
+
 def _walk_frame(i, SP=None):
     """走路兩幀交替。每 6 格換一次腳，跟模擬器的節奏一樣。"""
     SP = SP or person_sprite

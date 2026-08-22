@@ -155,6 +155,23 @@ DEFAULT_PARAMS = {
     "bogo_seconds": 13, "bogo_fps": 25,
     "bogo_text": "1 + 1",
     "bogo_date": "9/1-9/2",
+
+    # 整點隱藏彩蛋三組（業主 2026-08-09／08-21）。
+    # 12 秒是 stores.json 那邊排好的格子寬度（12:00:00〜12:00:12），
+    # 改長度要兩邊一起改，不然卡會播到一半被切掉。
+    "egg1_seconds": 12, "egg1_fps": 25,
+    "egg1_text": "FOUND YOU!",
+    "egg2_seconds": 12, "egg2_fps": 25,
+    "egg2_text": "RICE POWER MAX!",
+    "egg3_seconds": 12, "egg3_fps": 25,
+    "egg3_text": "GOAL!",
+
+    # 開幕全員集合與 10 元溫泉蛋。字一樣走參數 ——
+    # 「WELCOME TO OKAWARI!」業主可能會想換成中文，換字不該要重編美術。
+    "promo_open_seconds": 14, "promo_open_fps": 25,
+    "promo_open_text": "WELCOME TO OKAWARI!",
+    "promo_egg_seconds": 10, "promo_egg_fps": 25,
+    "promo_egg_text": "+10   EGG UPGRADE!",
 }
 
 
@@ -446,9 +463,18 @@ try:
 except Exception as _e:          # 美術還沒到位時不要讓整個後台起不來
     print("角色美術載入失敗，先跳過：%r" % (_e,))
 
-# 活動畫面（滿額 1000、買一送一）另外一支檔案。分開的理由見 scene_promo.py。
+# 活動畫面（滿額 1000、買一送一、開幕、溫泉蛋）另外一支檔案。
+# 分開的理由見 scene_promo.py。
 try:
     import scene_promo
     RENDERERS.update(scene_promo.RENDERERS)
 except Exception as _e:
     print("活動美術載入失敗，先跳過：%r" % (_e,))
+
+# 整點隱藏彩蛋三組。又分一支，因為它的生命週期跟活動也不一樣 ——
+# 活動是一檔一檔換的，彩蛋是上線之後就一直在那裡。
+try:
+    import scene_egg
+    RENDERERS.update(scene_egg.RENDERERS)
+except Exception as _e:
+    print("彩蛋美術載入失敗，先跳過：%r" % (_e,))

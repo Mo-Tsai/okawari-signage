@@ -41,6 +41,11 @@ SEGMENTS = [
     ("combo3", "續飯 COMBO 3"),
     ("bonus", "滿額 1000"),
     ("bogo", "買一送一"),
+    ("promo_open", "開幕全員集合"),
+    ("promo_egg", "10 元溫泉蛋"),
+    ("egg1", "彩蛋 手電筒巡邏"),
+    ("egg2", "彩蛋 RICE POWER"),
+    ("egg3", "彩蛋 接力賽"),
 ]
 CHARS = ("person", "ricebowl")
 

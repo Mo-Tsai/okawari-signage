@@ -499,7 +499,238 @@ def render_bogo(cols, rows, p=None):
     return out
 
 
+# ---------------------------------------------------------------- 溫泉蛋加價購
+# 客戶 2026-08-09：「10元溫泉蛋加價購：把蛋打進飯碗裡 → 10元升級」
+# Mo 2026-08-21：「溫泉蛋君呆萌登場 →『咻！』衝進碗裡 → +10 EGG UPGRADE!」
+#
+# ★ 呆萌是靠「停」表達的，不是靠表情
+#   P4 屏遠看三公尺，表情就是兩顆黑點，畫不出呆。呆是節奏：
+#   慢慢晃進來 → 停一下 → 再停一下 → 然後突然全速衝出去。
+#   前面停得越久，「咻」那一下越好笑。所以前半段刻意拖，不要覺得空。
+#
+# ★ 蛋打進去之後不能就這樣結束
+#   客戶要的是「升級」，不是「蛋不見了」。所以蛋黃會留在碗上 ——
+#   看得到那顆蛋，10 元才有付出去的感覺。
+
+YOLK = [                           # 打進碗裡之後留在飯上的那顆蛋黃
+    "..KKKK..",
+    ".KYYYYK.",
+    "KYYWYYYK",                    # 高光偏左上，跟炸雞同一個方向
+    "KYYYYYYK",
+    ".KYYYYK.",
+    "..KKKK..",
+]
+YOLK_PAL = {"K": (26, 23, 33), "Y": (247, 179, 43), "W": (255, 253, 246)}
+
+
+def _speed_lines(d, x, y, w, h, s, colour, count=4):
+    """速度線。畫在角色後面，長度不一，不要等長 ——
+    等長的四條線在屏上像柵欄，不像快。"""
+    for k in range(count):
+        yy = y + int(h * (0.22 + 0.18 * k))
+        ln = int(w * (0.5 + 0.35 * ((k * 7) % 3)))
+        d.rectangle([x - ln, yy, x - s, yy + max(1, s // 2)], fill=colour)
+
+
+def render_promo_egg(cols, rows, p=None):
+    """10 元溫泉蛋：呆萌晃進來 → 停 → 咻！衝進碗裡 → +10 EGG UPGRADE!"""
+    sc = artwork.Screen(cols, rows, p)
+    q = sc.p
+    SP = sa._ch(q)
+    n = artwork.frame_count(q, "promo_egg")
+
+    EGG = food_sprites.ONSEN_CH
+    if EGG is SP:                       # 主角就是溫泉蛋君的話，碗那邊換人
+        SP = sa.ricebowl_sprite
+
+    spr = SP.POSES["stand"]
+    s = sa._scale(len(spr), rows, q)
+    sw = max(len(r) for r in spr) * s
+    sh = len(spr) * s
+    floor = rows - max(1, s)
+    bowl_x = int(cols * 0.30)
+
+    ep = EGG.POSES["stand"]
+    es = sa._scale(len(ep), rows, q)
+    ew = max(len(r) for r in ep) * es
+    eh = len(ep) * es
+    egg_from = cols + ew
+    egg_to = bowl_x + sw - int(ew * 0.35)
+
+    # 蛋黃比角色小一階，而且要**坐在飯上面**，不是貼在臉上。
+    # 第一版跟角色同一個比例、放在身高兩成的位置，結果那顆蛋黃
+    # 剛好落在兩顆眼睛中間 —— 看起來像小飯碗長了一顆鼻子。
+    ys = max(1, int(s * 0.7))
+    yw = len(YOLK[0]) * ys
+    yy_off = -int(len(YOLK) * ys * 0.35)          # 稍微露出碗口上緣
+    txt = max(9, round(rows * 0.30))
+
+    # 呆萌的三拍：晃進來、停、再往前一點又停。然後才衝。
+    T_IN, T_HOLD, T_DASH, T_HIT = 0.30, 0.46, 0.54, 0.60
+    STOPS = (0.34, 0.42)
+
+    out = []
+    for i in range(n):
+        t = i / n
+        im = sc.gradient(phase=0.09 + 0.04 * t)
+        d = ImageDraw.Draw(im)
+
+        hit = t >= T_HIT
+
+        # --- 碗 ---
+        bob = -s if hit and (i // 4) % 2 == 0 else 0
+        sa._blit(d, SP.POSES["cheer" if hit else "stand"],
+                 bowl_x, floor - sh + bob, s, SP.PAL)
+        if hit:
+            # 蛋黃落在碗口正上方。小飯碗的配料在最上面三列，
+            # 蛋黃壓在那裡才是「打進飯裡」，再低就變成掛在臉上。
+            sa._blit_prop(d, YOLK, bowl_x + sw // 2 - yw // 2,
+                          floor - sh + yy_off + bob, ys)
+
+        # --- 溫泉蛋君 ---
+        if t < T_IN:
+            k = t / T_IN
+            ex = int(egg_from + (int(cols * 0.72) - egg_from) * k)
+            pose = EGG.POSES["walk_a" if (i // 9) % 2 == 0 else "walk_b"]
+            sa._blit(d, pose, ex, floor - eh, es, EGG.PAL, flip=True)
+        elif t < T_HOLD:
+            # 停住發呆。愣的那兩拍靠「完全不動」，換姿勢就不呆了。
+            k = (t - T_IN) / (T_HOLD - T_IN)
+            ex = int(cols * (0.72 - 0.10 * k))
+            still = any(abs(t - sp) < 0.03 for sp in STOPS)
+            pose = EGG.POSES["stand"] if still else \
+                EGG.POSES["walk_a" if (i // 9) % 2 == 0 else "walk_b"]
+            sa._blit(d, pose, ex, floor - eh, es, EGG.PAL, flip=True)
+        elif t < T_HIT:
+            # 咻！速度線 + 一路衝過去
+            k = (t - T_DASH) / (T_HIT - T_DASH) if t >= T_DASH else 0.0
+            base = int(cols * 0.62)
+            ex = int(base + (egg_to - base) * min(1.0, k))
+            _speed_lines(d, ex + ew, floor - eh, ew, eh, es, PROPS.PAL["W"])
+            sa._blit(d, EGG.POSES["walk_a"], ex, floor - eh, es, EGG.PAL,
+                     flip=True)
+        elif t < T_HIT + 0.05:
+            # 撞上那一格：蛋不畫（已經進去了），只留衝擊。
+            sa._spark(d, bowl_x + sw // 2, floor - sh // 2, sh, s,
+                      PROPS.PAL["W"])
+
+        # --- 收尾 ---
+        if hit:
+            k = (t - T_HIT) / (1 - T_HIT)
+            sa._confetti(d, cols, rows, 53, min(1.0, k * 1.6), 0.30, count=60)
+            if k > 0.10:
+                sa._text_at(im, str(q.get("promo_egg_text") or
+                                    "+10   EGG UPGRADE!"),
+                            int(cols * 0.52), int(rows * 0.34), txt,
+                            artwork.YEL)
+        out.append(im)
+    return out
+
+
+# ---------------------------------------------------------------- 開幕全員集合
+# 客戶 2026-08-09：「小飯碗角色從左右跑進來，紙花噴一下『飯迎光臨 OKAWARI START！』」
+# Mo 2026-08-21：「小飯碗與小勇士帶頭，牛丼、烏龍麵、咖哩、炸雞、布丁、巴斯克
+#                 依序跟上 → WELCOME TO OKAWARI!」
+#
+# ★ 名單上的「牛丼」就是小飯碗本人
+#   小飯碗已經帶頭了，後面不能再跟一隻一模一樣的。那個位置給溫泉蛋君 ——
+#   結果是八隻角色一個不漏全部到齊，這才是「全員集合」。
+#
+# ★ 字放上面、角色放下面
+#   八隻排開會吃掉整個畫面寬度，字沒地方去。這塊屏是 8:1，
+#   把角色縮到六成六、壓在下緣，上面那條剛好塞得下一行字，
+#   兩邊都不用讓。買一送一那段字放左邊是因為那裡只有兩隻角色。
+
+def _parade(SP):
+    """出場順序，從**前到後**：索引 0 是帶頭的，會站在最右邊。
+
+    帶頭的先跑進來、跑得最遠（停在最右邊），後面的依序停在它左邊。
+    這樣「帶頭」在畫面上才是真的在前面 —— 第一版把帶頭的擺在最左邊，
+    看起來變成小飯碗被六隻食物推著走。
+    """
+    lead = [sa.ricebowl_sprite, sa.person_sprite]   # 小飯碗 + 小勇士（人物）
+    if SP not in lead:
+        lead = [SP] + lead[:1]
+    tail = [c for c in (food_sprites.ONSEN_CH, food_sprites.UDON_CH,
+                        food_sprites.CURRY_CH, food_sprites.KARAAGE_CH,
+                        food_sprites.PURIN_CH, food_sprites.BASQUE_CH)
+            if c not in lead]
+    return lead + tail
+
+
+def render_promo_open(cols, rows, p=None):
+    """開幕：八隻依序跑進來站成一排 → 紙花 → WELCOME TO OKAWARI!"""
+    sc = artwork.Screen(cols, rows, p)
+    q = sc.p
+    SP = sa._ch(q)
+    n = artwork.frame_count(q, "promo_open")
+
+    team = _parade(SP)
+    # 名單是「前 → 後」，但畫面是由左往右排的，所以排版要倒過來 ——
+    # 倒過來之後 lay 的最後一個就是帶頭的，站最右邊。
+    # gap 交給 _lineup 自己算（不指定），八隻才會平均攤開吃滿整條屏；
+    # 指定固定間距的話會全部擠在左邊，右邊空三成。
+    order = list(reversed(team))
+    lay = sa._lineup(order, cols, rows, q, scale=0.66, left=0.02, right=0.98)
+
+    # 排不下就整排再縮。八隻的寬度是各自算的，窄畫布會超出去 ——
+    # 與其讓最右邊那隻被切掉，不如大家一起小一點。
+    scale = 0.66
+    while scale > 0.40 and lay[-1][1] + lay[-1][3] > cols - int(cols * 0.02):
+        scale -= 0.06
+        lay = sa._lineup(order, cols, rows, q, scale=scale,
+                         left=0.02, right=0.98)
+
+    floor = rows - max(1, sa._scale(len(SP.POSES["stand"]), rows, q))
+    txt = max(9, round(rows * 0.26))
+
+    # 依序跑進來：帶頭的（最右邊，lay 的最後一個）先跑，路也最長。
+    STEP, RUN = 0.075, 0.24
+    T_ALL = STEP * (len(team) - 1) + RUN          # 全員到齊的時間
+    out = []
+    for i in range(n):
+        t = i / n
+        im = sc.gradient(phase=0.08 + 0.05 * t)
+        d = ImageDraw.Draw(im)
+
+        for j, (c, x, s, w, h) in enumerate(lay):
+            t0 = (len(lay) - 1 - j) * STEP        # 越右邊的越早出發
+            k = (t - t0) / RUN
+            if k <= 0:
+                continue                            # 還沒進場
+            if k < 1:
+                # 跑進來
+                rx = int(-w + (x + w) * k)
+                pose = c.POSES["walk_a" if (i // 5) % 2 == 0 else "walk_b"]
+                bob = 0
+            else:
+                # 到位。全員到齊之前站著喘，到齊之後一起跳。
+                rx = x
+                if t < T_ALL:
+                    pose = c.POSES["stand"]
+                    bob = -s if ((i + j * 5) // 12) % 4 == 0 else 0
+                else:
+                    pose = c.POSES["cheer"]
+                    bob = -s * 2 if ((i + j * 2) // 5) % 2 == 0 else 0
+            sa._blit(d, pose, rx, floor - h + bob, s, c.PAL)
+
+        if t >= T_ALL:
+            k = (t - T_ALL) / max(0.01, 1 - T_ALL)
+            sa._confetti(d, cols, rows, 61, min(1.0, k * 1.5), 0.5, count=110)
+            if k > 0.08:
+                # 字壓在上緣。角色縮到六成六就是為了空出這一條。
+                s2 = str(q.get("promo_open_text") or "WELCOME TO OKAWARI!")
+                m = artwork.text_mask(s2, txt)
+                x2 = (cols - m.width) // 2 if m else int(cols * 0.2)
+                sa._text_at(im, s2, x2, max(1, int(rows * 0.04)), txt,
+                            artwork.YEL)
+        out.append(im)
+    return out
+
+
 RENDERERS = {
     "bonus": render_bonus,
     "bogo": render_bogo,
+    "promo_egg": render_promo_egg,
+    "promo_open": render_promo_open,
 }

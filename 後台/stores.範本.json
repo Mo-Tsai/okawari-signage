@@ -1,1087 +1,1048 @@
 {
-  "version": 1,
-  "updated": "2026-08-19",
-  "note": "門店登錄。2026-08-19 依客戶故事線改版：兩家店＋一張測試卡；contents 分成 layer=base（常駐、要排滿營業時間）與 layer=event（活動、彩蛋、觸發，疊在常駐上面，不算重疊）。",
-  "event_types": {
-    "idle": "畫布 —— 紅→黃像素漸變背景，無縫循環，沒事就播這個",
-    "patrol": "整點巡迴 —— 小勇者帶劍走過畫面，整點觸發＋待機時隨機出現",
-    "okawari": "促銷活動（續碗）—— 客人續碗時觸發，勇者衝出來劈石。需要低延遲切換",
-    "hourly": "整點事件 —— 已併入 patrol",
-    "promo": "促銷單張圖 —— 保留代號，目前未使用"
-  },
-  "content_source": {
-    "demo": "okawari-signage-demo/index.html（網頁版 v0.4）",
-    "panel": "led-panel/okawari_panel.py（64×32 實體板移植版）",
-    "note": "三樣內容的動態邏輯都以這兩支 demo 為準。續碗含擲骰破石，機率 stoneChance 預設 0.25。"
-  },
-  "params_help": {
-    "_": "這些是『要用眼睛看了才知道對不對』的值，改完按「發佈到卡」就會生效。每店也可以自己加一個 params 覆寫這裡。",
-    "seconds": "這段播完要幾秒。",
-    "fps": "每秒幾格。25 就是模擬器的流暢度；畫布只是慢慢變色，2 就夠。越高檔案越大。",
-    "patrol_gap": "勇者落後壞人幾個身位。太大兩個會不同時在畫面上。",
-    "gradient_window": "漸變一次用掉多少色階（0〜1）。越小顏色跨度越窄、越沉穩。",
-    "dither": "顆粒強度。0 = 完全乾淨的漸層，但 LED 上比較容易出現色帶。",
-    "hero_scale": "角色佔畫面高度的比例。"
-  },
-  "params": {
-    "idle_seconds": 30,
-    "idle_fps": 2,
-    "idle_scroll": 0,
-    "patrol_every_minutes": 0,
-    "patrol_seconds": 12,
-    "patrol_fps": 25,
-    "okawari_seconds": 8,
-    "okawari_fps": 25,
-    "okawari_hit_chance": 0.25,
-    "patrol_gap": 30,
-    "okawari_stone": 0.55,
-    "gradient_window": 0.72,
-    "dither": 0.22,
-    "hero_scale": 0.72
-  },
-  "stores": [
-    {
-      "id": "test",
-      "name": "測試版（公司測試卡）",
-      "enabled": true,
-      "note": "2026-08-10 實測建立。所有送檔／建節目的功能都先在這裡驗證完再推到門市。",
-      "canvas": {
-        "width": 160,
-        "height": 40,
-        "pitch": null,
-        "source": "2026-08-10 由卡的 GetDeviceInfo 讀回，次元光電確認"
-      },
-      "mirror": {
-        "of": "tainan",
-        "align": "center",
-        "note": "測試卡不是獨立設計。它是台南 960×120 等比縮 1/3（高 120→40）之後的一個視窗；縮完寬度是 320，卡只有 160，所以取中間那段。這樣測試卡上看到的就是門市的真實比例。"
-      },
-      "card": {
-        "model": "C16L",
-        "hardware": "HD-C16L-V1.X",
-        "cpu": "RK.px30",
-        "device_id": "",
-        "mac": "",
-        "firmware_app": "7.9.79.0",
-        "firmware_fpga": "16.8.0.0",
-        "sdk_port": 10001,
-        "ip_mode": "dhcp",
-        "last_known_ip": "",
-        "gateway": null,
-        "wifi_ap": {
-          "enabled": true,
-          "ssid": "",
-          "password": "",
-          "ip": "192.168.6.1",
-          "note": "出廠預設密碼一定要改掉，不要留 88888888"
-        }
-      },
-      "hq": {
-        "host": "",
-        "port": 0,
-        "note": "SetSDKTcpServer 主動回連，目前是空的。"
-      },
-      "network": {
-        "uplink": "none",
-        "note": "卡的閘道與 DNS 都是 0.0.0.0，沒有對外能力。要接 4G 路由器才能撥回總部。"
-      },
-      "contents": [
-        {
-          "key": "idle",
-          "name": "待機（不分時段的底）",
-          "enabled": false,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ]
-          },
-          "note": "四段常駐上線後停用。要回頭比對時改回 true。"
-        },
-        {
-          "key": "opening",
-          "name": "開店畫面",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:00",
-              "11:30"
-            ]
-          },
-          "note": "開幕期間會被 promo_open 蓋掉（那支有 date，優先權比較高）。"
-        },
-        {
-          "key": "noon",
-          "name": "今天也要好好吃飯",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:30",
-              "14:00"
-            ]
-          }
-        },
-        {
-          "key": "siesta",
-          "name": "午後發呆 Zzz",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "14:00",
-              "17:30"
-            ]
-          }
-        },
-        {
-          "key": "evening",
-          "name": "今天辛苦了，吃飯吧",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "17:30",
-              "22:30"
-            ]
-          },
-          "note": "2026-08-18 改版：主角換上班族造型（不是新角色），最後一拍是看到飯精神恢復。"
-        },
-        {
-          "key": "egg_12",
-          "art": "egg1",
-          "name": "整點彩蛋 12:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "12:00:00",
-              "12:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_13",
-          "art": "egg3",
-          "name": "整點彩蛋 13:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "13:00:00",
-              "13:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_14",
-          "art": "egg2",
-          "name": "整點彩蛋 14:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "14:00:00",
-              "14:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_15",
-          "art": "egg1",
-          "name": "整點彩蛋 15:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "15:00:00",
-              "15:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_16",
-          "art": "egg3",
-          "name": "整點彩蛋 16:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "16:00:00",
-              "16:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_17",
-          "art": "egg2",
-          "name": "整點彩蛋 17:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "17:00:00",
-              "17:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_18",
-          "art": "egg1",
-          "name": "整點彩蛋 18:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "18:00:00",
-              "18:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_19",
-          "art": "egg3",
-          "name": "整點彩蛋 19:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "19:00:00",
-              "19:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_20",
-          "art": "egg2",
-          "name": "整點彩蛋 20:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "20:00:00",
-              "20:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_21",
-          "art": "egg1",
-          "name": "整點彩蛋 21:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "21:00:00",
-              "21:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_22",
-          "art": "egg3",
-          "name": "整點彩蛋 22:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "22:00:00",
-              "22:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "promo_open",
-          "name": "開幕：全員集合",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "11:00",
-              "11:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-30"
-            ]
-          },
-          "note": "開幕期間取代 opening。結束日期待業主確認。"
-        },
-        {
-          "key": "promo_bogo",
-          "name": "買一送一（半顆愛心）",
-          "enabled": true,
-          "layer": "event",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-02"
-            ]
-          },
-          "note": "★ 兩店檔期不同。旗幟上的字走 params.bogo_date，不是畫死的圖 —— 後台「活動文案」那一格改就好。",
-          "art": "bogo"
-        },
-        {
-          "key": "promo_egg",
-          "name": "10 元溫泉蛋加價購",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-30"
-            ]
-          },
-          "note": "檔期待確認。"
-        },
-        {
-          "key": "combo1",
-          "name": "續飯 COMBO 1（震一下，+1）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "客人按續飯按鈕。三段是接續的，combo2 的起始大小＝combo1 的結束大小。"
-        },
-        {
-          "key": "combo2",
-          "name": "續飯 COMBO 2（彈起來，+2）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "★ 連按的節奏取決於 SwitchProgram 延遲，先跑 _測_SwitchProgram延遲.py。"
-        },
-        {
-          "key": "combo3",
-          "name": "續飯 COMBO 3（撐破畫面）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "播完要記得切回當下時段的常駐畫面。"
-        },
-        {
-          "key": "okawari",
-          "name": "滿額 1000：劈石 → GOLDEN BOWL",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "店員觸發。完成文字走 params.bonus_text。",
-          "art": "bonus"
-        }
-      ]
-    },
-    {
-      "id": "tainan",
-      "name": "新光三越台南小北",
-      "enabled": true,
-      "note": "畫布 2026-08-10 由 Mo 提供。卡資訊待現場讀取。",
-      "canvas": {
-        "width": 960,
-        "height": 120,
-        "pitch": null,
-        "source": "2026-08-10 Mo 提供"
-      },
-      "card": {
-        "sdk_port": 10001,
-        "ip_mode": "dhcp"
-      },
-      "hq": {
-        "host": "",
-        "port": 0
-      },
-      "network": {
-        "uplink": "4g-router"
-      },
-      "contents": [
-        {
-          "key": "idle",
-          "name": "待機（不分時段的底）",
-          "enabled": false,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ]
-          },
-          "note": "四段常駐上線後停用。要回頭比對時改回 true。"
-        },
-        {
-          "key": "opening",
-          "name": "開店畫面",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:00",
-              "11:30"
-            ]
-          },
-          "note": "開幕期間會被 promo_open 蓋掉（那支有 date，優先權比較高）。"
-        },
-        {
-          "key": "noon",
-          "name": "今天也要好好吃飯",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:30",
-              "14:00"
-            ]
-          }
-        },
-        {
-          "key": "siesta",
-          "name": "午後發呆 Zzz",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "14:00",
-              "17:30"
-            ]
-          }
-        },
-        {
-          "key": "evening",
-          "name": "今天辛苦了，吃飯吧",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "17:30",
-              "22:30"
-            ]
-          },
-          "note": "2026-08-18 改版：主角換上班族造型（不是新角色），最後一拍是看到飯精神恢復。"
-        },
-        {
-          "key": "egg_12",
-          "art": "egg1",
-          "name": "整點彩蛋 12:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "12:00:00",
-              "12:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_13",
-          "art": "egg3",
-          "name": "整點彩蛋 13:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "13:00:00",
-              "13:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_14",
-          "art": "egg2",
-          "name": "整點彩蛋 14:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "14:00:00",
-              "14:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_15",
-          "art": "egg1",
-          "name": "整點彩蛋 15:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "15:00:00",
-              "15:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_16",
-          "art": "egg3",
-          "name": "整點彩蛋 16:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "16:00:00",
-              "16:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_17",
-          "art": "egg2",
-          "name": "整點彩蛋 17:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "17:00:00",
-              "17:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_18",
-          "art": "egg1",
-          "name": "整點彩蛋 18:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "18:00:00",
-              "18:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_19",
-          "art": "egg3",
-          "name": "整點彩蛋 19:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "19:00:00",
-              "19:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_20",
-          "art": "egg2",
-          "name": "整點彩蛋 20:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "20:00:00",
-              "20:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_21",
-          "art": "egg1",
-          "name": "整點彩蛋 21:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "21:00:00",
-              "21:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_22",
-          "art": "egg3",
-          "name": "整點彩蛋 22:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "22:00:00",
-              "22:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "promo_open",
-          "name": "開幕：全員集合",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "11:00",
-              "11:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-30"
-            ]
-          },
-          "note": "開幕期間取代 opening。結束日期待業主確認。"
-        },
-        {
-          "key": "promo_bogo",
-          "name": "買一送一（半顆愛心）",
-          "enabled": true,
-          "layer": "event",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ],
-            "date": [
-              "2026-09-02",
-              "2026-09-03"
-            ]
-          },
-          "note": "★ 兩店檔期不同。旗幟上的字走 params.bogo_date，不是畫死的圖 —— 後台「活動文案」那一格改就好。",
-          "art": "bogo"
-        },
-        {
-          "key": "promo_egg",
-          "name": "10 元溫泉蛋加價購",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-30"
-            ]
-          },
-          "note": "檔期待確認。"
-        },
-        {
-          "key": "combo1",
-          "name": "續飯 COMBO 1（震一下，+1）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "客人按續飯按鈕。三段是接續的，combo2 的起始大小＝combo1 的結束大小。"
-        },
-        {
-          "key": "combo2",
-          "name": "續飯 COMBO 2（彈起來，+2）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "★ 連按的節奏取決於 SwitchProgram 延遲，先跑 _測_SwitchProgram延遲.py。"
-        },
-        {
-          "key": "combo3",
-          "name": "續飯 COMBO 3（撐破畫面）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "播完要記得切回當下時段的常駐畫面。"
-        },
-        {
-          "key": "okawari",
-          "name": "滿額 1000：劈石 → GOLDEN BOWL",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "店員觸發。完成文字走 params.bonus_text。",
-          "art": "bonus"
-        }
-      ]
-    },
-    {
-      "id": "taichung",
-      "name": "新光三越台中港",
-      "enabled": true,
-      "note": "畫布 2026-08-10 由 Mo 提供。卡資訊待現場讀取。",
-      "canvas": {
-        "width": 1040,
-        "height": 120,
-        "pitch": null,
-        "source": "2026-08-10 Mo 提供"
-      },
-      "card": {
-        "sdk_port": 10001,
-        "ip_mode": "dhcp"
-      },
-      "hq": {
-        "host": "",
-        "port": 0
-      },
-      "network": {
-        "uplink": "4g-router"
-      },
-      "contents": [
-        {
-          "key": "idle",
-          "name": "待機（不分時段的底）",
-          "enabled": false,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ]
-          },
-          "note": "四段常駐上線後停用。要回頭比對時改回 true。"
-        },
-        {
-          "key": "opening",
-          "name": "開店畫面",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:00",
-              "11:30"
-            ]
-          },
-          "note": "開幕期間會被 promo_open 蓋掉（那支有 date，優先權比較高）。"
-        },
-        {
-          "key": "noon",
-          "name": "今天也要好好吃飯",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "11:30",
-              "14:00"
-            ]
-          }
-        },
-        {
-          "key": "siesta",
-          "name": "午後發呆 Zzz",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "14:00",
-              "17:30"
-            ]
-          }
-        },
-        {
-          "key": "evening",
-          "name": "今天辛苦了，吃飯吧",
-          "enabled": true,
-          "layer": "base",
-          "when": {
-            "time": [
-              "17:30",
-              "22:30"
-            ]
-          },
-          "note": "2026-08-18 改版：主角換上班族造型（不是新角色），最後一拍是看到飯精神恢復。"
-        },
-        {
-          "key": "egg_12",
-          "art": "egg1",
-          "name": "整點彩蛋 12:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "12:00:00",
-              "12:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_13",
-          "art": "egg3",
-          "name": "整點彩蛋 13:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "13:00:00",
-              "13:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_14",
-          "art": "egg2",
-          "name": "整點彩蛋 14:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "14:00:00",
-              "14:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_15",
-          "art": "egg1",
-          "name": "整點彩蛋 15:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "15:00:00",
-              "15:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_16",
-          "art": "egg3",
-          "name": "整點彩蛋 16:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "16:00:00",
-              "16:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_17",
-          "art": "egg2",
-          "name": "整點彩蛋 17:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "17:00:00",
-              "17:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_18",
-          "art": "egg1",
-          "name": "整點彩蛋 18:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "18:00:00",
-              "18:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_19",
-          "art": "egg3",
-          "name": "整點彩蛋 19:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "19:00:00",
-              "19:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_20",
-          "art": "egg2",
-          "name": "整點彩蛋 20:00・RICE POWER",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "20:00:00",
-              "20:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_21",
-          "art": "egg1",
-          "name": "整點彩蛋 21:00・手電筒巡邏",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "21:00:00",
-              "21:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "egg_22",
-          "art": "egg3",
-          "name": "整點彩蛋 22:00・接力賽",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "22:00:00",
-              "22:00:12"
-            ]
-          },
-          "note": "美術還沒做，編譯時會自動跳過。art 相同的幾個時段共用同一支影片。"
-        },
-        {
-          "key": "promo_open",
-          "name": "開幕：全員集合",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "11:00",
-              "11:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-30"
-            ]
-          },
-          "note": "開幕期間取代 opening。結束日期待業主確認。"
-        },
-        {
-          "key": "promo_bogo",
-          "name": "買一送一（半顆愛心）",
-          "enabled": true,
-          "layer": "event",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-02"
-            ]
-          },
-          "note": "★ 兩店檔期不同。旗幟上的字走 params.bogo_date，不是畫死的圖 —— 後台「活動文案」那一格改就好。",
-          "art": "bogo"
-        },
-        {
-          "key": "promo_egg",
-          "name": "10 元溫泉蛋加價購",
-          "enabled": false,
-          "layer": "event",
-          "art_status": "pending",
-          "when": {
-            "time": [
-              "11:00",
-              "22:30"
-            ],
-            "date": [
-              "2026-09-01",
-              "2026-09-30"
-            ]
-          },
-          "note": "檔期待確認。"
-        },
-        {
-          "key": "combo1",
-          "name": "續飯 COMBO 1（震一下，+1）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "客人按續飯按鈕。三段是接續的，combo2 的起始大小＝combo1 的結束大小。"
-        },
-        {
-          "key": "combo2",
-          "name": "續飯 COMBO 2（彈起來，+2）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "★ 連按的節奏取決於 SwitchProgram 延遲，先跑 _測_SwitchProgram延遲.py。"
-        },
-        {
-          "key": "combo3",
-          "name": "續飯 COMBO 3（撐破畫面）",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "播完要記得切回當下時段的常駐畫面。"
-        },
-        {
-          "key": "okawari",
-          "name": "滿額 1000：劈石 → GOLDEN BOWL",
-          "enabled": true,
-          "layer": "event",
-          "trigger": "manual",
-          "note": "店員觸發。完成文字走 params.bonus_text。",
-          "art": "bonus"
-        }
-      ]
+ "version": 1,
+ "updated": "2026-08-19",
+ "note": "門店登錄。2026-08-19 依客戶故事線改版：兩家店＋一張測試卡；contents 分成 layer=base（常駐、要排滿營業時間）與 layer=event（活動、彩蛋、觸發，疊在常駐上面，不算重疊）。",
+ "event_types": {
+  "idle": "畫布 —— 紅→黃像素漸變背景，無縫循環，沒事就播這個",
+  "patrol": "整點巡迴 —— 小勇者帶劍走過畫面，整點觸發＋待機時隨機出現",
+  "okawari": "促銷活動（續碗）—— 客人續碗時觸發，勇者衝出來劈石。需要低延遲切換",
+  "hourly": "整點事件 —— 已併入 patrol",
+  "promo": "促銷單張圖 —— 保留代號，目前未使用"
+ },
+ "content_source": {
+  "demo": "okawari-signage-demo/index.html（網頁版 v0.4）",
+  "panel": "led-panel/okawari_panel.py（64×32 實體板移植版）",
+  "note": "三樣內容的動態邏輯都以這兩支 demo 為準。續碗含擲骰破石，機率 stoneChance 預設 0.25。"
+ },
+ "params_help": {
+  "_": "這些是『要用眼睛看了才知道對不對』的值，改完按「發佈到卡」就會生效。每店也可以自己加一個 params 覆寫這裡。",
+  "seconds": "這段播完要幾秒。",
+  "fps": "每秒幾格。25 就是模擬器的流暢度；畫布只是慢慢變色，2 就夠。越高檔案越大。",
+  "patrol_gap": "勇者落後壞人幾個身位。太大兩個會不同時在畫面上。",
+  "gradient_window": "漸變一次用掉多少色階（0〜1）。越小顏色跨度越窄、越沉穩。",
+  "dither": "顆粒強度。0 = 完全乾淨的漸層，但 LED 上比較容易出現色帶。",
+  "hero_scale": "角色佔畫面高度的比例。"
+ },
+ "params": {
+  "idle_seconds": 30,
+  "idle_fps": 2,
+  "idle_scroll": 0,
+  "patrol_every_minutes": 0,
+  "patrol_seconds": 12,
+  "patrol_fps": 25,
+  "okawari_seconds": 8,
+  "okawari_fps": 25,
+  "okawari_hit_chance": 0.25,
+  "patrol_gap": 30,
+  "okawari_stone": 0.55,
+  "gradient_window": 0.72,
+  "dither": 0.22,
+  "hero_scale": 0.72
+ },
+ "stores": [
+  {
+   "id": "test",
+   "name": "測試版（公司測試卡）",
+   "enabled": true,
+   "note": "2026-08-10 實測建立。所有送檔／建節目的功能都先在這裡驗證完再推到門市。",
+   "canvas": {
+    "width": 160,
+    "height": 40,
+    "pitch": null,
+    "source": "2026-08-10 由卡的 GetDeviceInfo 讀回，次元光電確認"
+   },
+   "mirror": {
+    "of": "tainan",
+    "align": "center",
+    "note": "測試卡不是獨立設計。它是台南 960×120 等比縮 1/3（高 120→40）之後的一個視窗；縮完寬度是 320，卡只有 160，所以取中間那段。這樣測試卡上看到的就是門市的真實比例。"
+   },
+   "card": {
+    "model": "C16L",
+    "hardware": "HD-C16L-V1.X",
+    "cpu": "RK.px30",
+    "device_id": "",
+    "mac": "",
+    "firmware_app": "7.9.79.0",
+    "firmware_fpga": "16.8.0.0",
+    "sdk_port": 10001,
+    "ip_mode": "dhcp",
+    "last_known_ip": "",
+    "gateway": null,
+    "wifi_ap": {
+     "enabled": true,
+     "ssid": "",
+     "password": "",
+     "ip": "192.168.6.1",
+     "note": "出廠預設密碼一定要改掉，不要留 88888888"
     }
-  ]
+   },
+   "hq": {
+    "host": "",
+    "port": 0,
+    "note": "SetSDKTcpServer 主動回連，目前是空的。"
+   },
+   "network": {
+    "uplink": "none",
+    "note": "卡的閘道與 DNS 都是 0.0.0.0，沒有對外能力。要接 4G 路由器才能撥回總部。"
+   },
+   "contents": [
+    {
+     "key": "idle",
+     "name": "待機（不分時段的底）",
+     "enabled": false,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ]
+     },
+     "note": "四段常駐上線後停用。要回頭比對時改回 true。"
+    },
+    {
+     "key": "opening",
+     "name": "開店畫面",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:00",
+       "11:30"
+      ]
+     },
+     "note": "開幕期間會被 promo_open 蓋掉（那支有 date，優先權比較高）。"
+    },
+    {
+     "key": "noon",
+     "name": "今天也要好好吃飯",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:30",
+       "14:00"
+      ]
+     }
+    },
+    {
+     "key": "siesta",
+     "name": "午後發呆 Zzz",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "14:00",
+       "17:30"
+      ]
+     }
+    },
+    {
+     "key": "evening",
+     "name": "今天辛苦了，吃飯吧",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "17:30",
+       "22:30"
+      ]
+     },
+     "note": "2026-08-18 改版：主角換上班族造型（不是新角色），最後一拍是看到飯精神恢復。"
+    },
+    {
+     "key": "egg_12",
+     "art": "egg1",
+     "name": "整點彩蛋 12:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "12:00:00",
+       "12:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_13",
+     "art": "egg3",
+     "name": "整點彩蛋 13:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "13:00:00",
+       "13:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_14",
+     "art": "egg2",
+     "name": "整點彩蛋 14:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "14:00:00",
+       "14:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_15",
+     "art": "egg1",
+     "name": "整點彩蛋 15:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "15:00:00",
+       "15:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_16",
+     "art": "egg3",
+     "name": "整點彩蛋 16:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "16:00:00",
+       "16:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_17",
+     "art": "egg2",
+     "name": "整點彩蛋 17:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "17:00:00",
+       "17:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_18",
+     "art": "egg1",
+     "name": "整點彩蛋 18:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "18:00:00",
+       "18:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_19",
+     "art": "egg3",
+     "name": "整點彩蛋 19:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "19:00:00",
+       "19:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_20",
+     "art": "egg2",
+     "name": "整點彩蛋 20:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "20:00:00",
+       "20:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_21",
+     "art": "egg1",
+     "name": "整點彩蛋 21:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "21:00:00",
+       "21:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_22",
+     "art": "egg3",
+     "name": "整點彩蛋 22:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "22:00:00",
+       "22:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "promo_open",
+     "name": "開幕：全員集合",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "11:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-30"
+      ]
+     },
+     "note": "開幕期間取代 opening。結束日期待業主確認。"
+    },
+    {
+     "key": "promo_bogo",
+     "name": "買一送一（半顆愛心）",
+     "enabled": true,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-02"
+      ]
+     },
+     "note": "★ 兩店檔期不同。旗幟上的字走 params.bogo_date，不是畫死的圖 —— 後台「活動文案」那一格改就好。",
+     "art": "bogo"
+    },
+    {
+     "key": "promo_egg",
+     "name": "10 元溫泉蛋加價購",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-30"
+      ]
+     },
+     "note": "檔期待確認。"
+    },
+    {
+     "key": "combo1",
+     "name": "續飯 COMBO 1（震一下，+1）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "客人按續飯按鈕。三段是接續的，combo2 的起始大小＝combo1 的結束大小。"
+    },
+    {
+     "key": "combo2",
+     "name": "續飯 COMBO 2（彈起來，+2）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "★ 連按的節奏取決於 SwitchProgram 延遲，先跑 _測_SwitchProgram延遲.py。"
+    },
+    {
+     "key": "combo3",
+     "name": "續飯 COMBO 3（撐破畫面）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "播完要記得切回當下時段的常駐畫面。"
+    },
+    {
+     "key": "okawari",
+     "name": "滿額 1000：劈石 → GOLDEN BOWL",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "店員觸發。完成文字走 params.bonus_text。",
+     "art": "bonus"
+    }
+   ]
+  },
+  {
+   "id": "tainan",
+   "name": "新光三越台南小北",
+   "enabled": true,
+   "note": "畫布 2026-08-10 由 Mo 提供。卡資訊待現場讀取。",
+   "canvas": {
+    "width": 960,
+    "height": 120,
+    "pitch": null,
+    "source": "2026-08-10 Mo 提供"
+   },
+   "card": {
+    "sdk_port": 10001,
+    "ip_mode": "dhcp"
+   },
+   "hq": {
+    "host": "",
+    "port": 0
+   },
+   "network": {
+    "uplink": "4g-router"
+   },
+   "contents": [
+    {
+     "key": "idle",
+     "name": "待機（不分時段的底）",
+     "enabled": false,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ]
+     },
+     "note": "四段常駐上線後停用。要回頭比對時改回 true。"
+    },
+    {
+     "key": "opening",
+     "name": "開店畫面",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:00",
+       "11:30"
+      ]
+     },
+     "note": "開幕期間會被 promo_open 蓋掉（那支有 date，優先權比較高）。"
+    },
+    {
+     "key": "noon",
+     "name": "今天也要好好吃飯",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:30",
+       "14:00"
+      ]
+     }
+    },
+    {
+     "key": "siesta",
+     "name": "午後發呆 Zzz",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "14:00",
+       "17:30"
+      ]
+     }
+    },
+    {
+     "key": "evening",
+     "name": "今天辛苦了，吃飯吧",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "17:30",
+       "22:30"
+      ]
+     },
+     "note": "2026-08-18 改版：主角換上班族造型（不是新角色），最後一拍是看到飯精神恢復。"
+    },
+    {
+     "key": "egg_12",
+     "art": "egg1",
+     "name": "整點彩蛋 12:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "12:00:00",
+       "12:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_13",
+     "art": "egg3",
+     "name": "整點彩蛋 13:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "13:00:00",
+       "13:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_14",
+     "art": "egg2",
+     "name": "整點彩蛋 14:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "14:00:00",
+       "14:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_15",
+     "art": "egg1",
+     "name": "整點彩蛋 15:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "15:00:00",
+       "15:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_16",
+     "art": "egg3",
+     "name": "整點彩蛋 16:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "16:00:00",
+       "16:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_17",
+     "art": "egg2",
+     "name": "整點彩蛋 17:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "17:00:00",
+       "17:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_18",
+     "art": "egg1",
+     "name": "整點彩蛋 18:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "18:00:00",
+       "18:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_19",
+     "art": "egg3",
+     "name": "整點彩蛋 19:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "19:00:00",
+       "19:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_20",
+     "art": "egg2",
+     "name": "整點彩蛋 20:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "20:00:00",
+       "20:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_21",
+     "art": "egg1",
+     "name": "整點彩蛋 21:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "21:00:00",
+       "21:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_22",
+     "art": "egg3",
+     "name": "整點彩蛋 22:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "22:00:00",
+       "22:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "promo_open",
+     "name": "開幕：全員集合",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "11:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-30"
+      ]
+     },
+     "note": "開幕期間取代 opening。結束日期待業主確認。"
+    },
+    {
+     "key": "promo_bogo",
+     "name": "買一送一（半顆愛心）",
+     "enabled": true,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ],
+      "date": [
+       "2026-09-02",
+       "2026-09-03"
+      ]
+     },
+     "note": "★ 兩店檔期不同。旗幟上的字走 params.bogo_date，不是畫死的圖 —— 後台「活動文案」那一格改就好。",
+     "art": "bogo"
+    },
+    {
+     "key": "promo_egg",
+     "name": "10 元溫泉蛋加價購",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-30"
+      ]
+     },
+     "note": "檔期待確認。"
+    },
+    {
+     "key": "combo1",
+     "name": "續飯 COMBO 1（震一下，+1）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "客人按續飯按鈕。三段是接續的，combo2 的起始大小＝combo1 的結束大小。"
+    },
+    {
+     "key": "combo2",
+     "name": "續飯 COMBO 2（彈起來，+2）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "★ 連按的節奏取決於 SwitchProgram 延遲，先跑 _測_SwitchProgram延遲.py。"
+    },
+    {
+     "key": "combo3",
+     "name": "續飯 COMBO 3（撐破畫面）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "播完要記得切回當下時段的常駐畫面。"
+    },
+    {
+     "key": "okawari",
+     "name": "滿額 1000：劈石 → GOLDEN BOWL",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "店員觸發。完成文字走 params.bonus_text。",
+     "art": "bonus"
+    }
+   ]
+  },
+  {
+   "id": "taichung",
+   "name": "新光三越台中港",
+   "enabled": true,
+   "note": "畫布 2026-08-10 由 Mo 提供。卡資訊待現場讀取。",
+   "canvas": {
+    "width": 1040,
+    "height": 120,
+    "pitch": null,
+    "source": "2026-08-10 Mo 提供"
+   },
+   "card": {
+    "sdk_port": 10001,
+    "ip_mode": "dhcp"
+   },
+   "hq": {
+    "host": "",
+    "port": 0
+   },
+   "network": {
+    "uplink": "4g-router"
+   },
+   "contents": [
+    {
+     "key": "idle",
+     "name": "待機（不分時段的底）",
+     "enabled": false,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ]
+     },
+     "note": "四段常駐上線後停用。要回頭比對時改回 true。"
+    },
+    {
+     "key": "opening",
+     "name": "開店畫面",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:00",
+       "11:30"
+      ]
+     },
+     "note": "開幕期間會被 promo_open 蓋掉（那支有 date，優先權比較高）。"
+    },
+    {
+     "key": "noon",
+     "name": "今天也要好好吃飯",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "11:30",
+       "14:00"
+      ]
+     }
+    },
+    {
+     "key": "siesta",
+     "name": "午後發呆 Zzz",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "14:00",
+       "17:30"
+      ]
+     }
+    },
+    {
+     "key": "evening",
+     "name": "今天辛苦了，吃飯吧",
+     "enabled": true,
+     "layer": "base",
+     "when": {
+      "time": [
+       "17:30",
+       "22:30"
+      ]
+     },
+     "note": "2026-08-18 改版：主角換上班族造型（不是新角色），最後一拍是看到飯精神恢復。"
+    },
+    {
+     "key": "egg_12",
+     "art": "egg1",
+     "name": "整點彩蛋 12:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "12:00:00",
+       "12:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_13",
+     "art": "egg3",
+     "name": "整點彩蛋 13:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "13:00:00",
+       "13:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_14",
+     "art": "egg2",
+     "name": "整點彩蛋 14:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "14:00:00",
+       "14:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_15",
+     "art": "egg1",
+     "name": "整點彩蛋 15:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "15:00:00",
+       "15:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_16",
+     "art": "egg3",
+     "name": "整點彩蛋 16:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "16:00:00",
+       "16:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_17",
+     "art": "egg2",
+     "name": "整點彩蛋 17:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "17:00:00",
+       "17:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_18",
+     "art": "egg1",
+     "name": "整點彩蛋 18:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "18:00:00",
+       "18:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_19",
+     "art": "egg3",
+     "name": "整點彩蛋 19:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "19:00:00",
+       "19:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_20",
+     "art": "egg2",
+     "name": "整點彩蛋 20:00・RICE POWER",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "20:00:00",
+       "20:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_21",
+     "art": "egg1",
+     "name": "整點彩蛋 21:00・手電筒巡邏",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "21:00:00",
+       "21:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "egg_22",
+     "art": "egg3",
+     "name": "整點彩蛋 22:00・接力賽",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "22:00:00",
+       "22:00:12"
+      ]
+     },
+     "note": "整點彩蛋。art 相同的幾個時段共用同一支影片。"
+    },
+    {
+     "key": "promo_open",
+     "name": "開幕：全員集合",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "11:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-30"
+      ]
+     },
+     "note": "開幕期間取代 opening。結束日期待業主確認。"
+    },
+    {
+     "key": "promo_bogo",
+     "name": "買一送一（半顆愛心）",
+     "enabled": true,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-02"
+      ]
+     },
+     "note": "★ 兩店檔期不同。旗幟上的字走 params.bogo_date，不是畫死的圖 —— 後台「活動文案」那一格改就好。",
+     "art": "bogo"
+    },
+    {
+     "key": "promo_egg",
+     "name": "10 元溫泉蛋加價購",
+     "enabled": false,
+     "layer": "event",
+     "when": {
+      "time": [
+       "11:00",
+       "22:30"
+      ],
+      "date": [
+       "2026-09-01",
+       "2026-09-30"
+      ]
+     },
+     "note": "檔期待確認。"
+    },
+    {
+     "key": "combo1",
+     "name": "續飯 COMBO 1（震一下，+1）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "客人按續飯按鈕。三段是接續的，combo2 的起始大小＝combo1 的結束大小。"
+    },
+    {
+     "key": "combo2",
+     "name": "續飯 COMBO 2（彈起來，+2）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "★ 連按的節奏取決於 SwitchProgram 延遲，先跑 _測_SwitchProgram延遲.py。"
+    },
+    {
+     "key": "combo3",
+     "name": "續飯 COMBO 3（撐破畫面）",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "播完要記得切回當下時段的常駐畫面。"
+    },
+    {
+     "key": "okawari",
+     "name": "滿額 1000：劈石 → GOLDEN BOWL",
+     "enabled": true,
+     "layer": "event",
+     "trigger": "manual",
+     "note": "店員觸發。完成文字走 params.bonus_text。",
+     "art": "bonus"
+    }
+   ]
+  }
+ ]
 }
