@@ -33,13 +33,16 @@ OKAWARI 預告片 · 一支動畫（不是門頭屏的模擬圖）
 
 ★ 分鏡（15.000 秒，跟配樂同一個數字）
 
-    0.00-0.03   全黑
-    0.03-0.29   兩道探照燈交叉掃 —— 橘色是被照出來的，不是淡進來的
-    0.29-0.34   燈全開，過曝一下
-    0.36-0.53   啪、啪、啪、啪 —— 六位賓客原地彈出來
-    0.58-0.70   小飯碗從天上砸下來
+    0.00-0.02   全黑
+    0.02-0.36   探照燈在舞台上左右掃。人一直站在暗處，掃到誰誰才亮 ——
+                一下瞄到烏龍麵哥、一下瞄到布丁妹妹
+    0.36-0.40   收燈
+    0.40-0.49   ★ 黑幕。整支片的呼吸點
+    0.49        燈亮，閃白一下
+    0.50-0.67   六位賓客陸續從天上跳下來，一隻一隻落地
+    0.66-0.70   小飯碗最後砸下來
     0.70        落地：畫面震、全員被彈起來
-    0.75-1.00   全員歡呼、紙花 ——「8.26 公開」在同一格跳出來
+    0.75-1.00   全員歡呼、紙花 ——「8/26」在同一格跳出來
 
   0.75 就是配樂第 7 小節的重音。兩邊都照 128 BPM 算，不是後製對的。
 """
@@ -72,7 +75,7 @@ FORMATS = {
     "post": (270, 338),            # 1080×1352　IG 貼文 4:5
 }
 
-REVEAL_TEXT = "8.26 公開"          # 要改字改這裡
+REVEAL_TEXT = "8/26"               # 要改字改這裡
 
 BACK = [fs.ONSEN_CH, fs.CURRY_CH, fs.KARAAGE_CH, fs.BASQUE_CH]
 MID = [fs.UDON_CH, fs.PURIN_CH]
@@ -80,21 +83,29 @@ MID = [fs.UDON_CH, fs.PURIN_CH]
 # ---------------------------------------------------------------- 節拍
 # 全部是 0→1 的比例。乘上 15 秒就是秒數。
 #
-# ★ 開場不是淡入，是探照燈掃出來的
-#   「黑畫面慢慢變橘」是螢幕的語言 —— 那是一塊面板在調亮度。
-#   探照燈掃過去、掃到哪裡哪裡才亮，那是空間的語言：暗的地方一直都在，
-#   只是還沒被照到。這個梗跟整點彩蛋 egg1（手電筒巡邏）是同一個，
-#   前後呼應得起來。
+# ★ 開場是探照燈在舞台上掃，照到人
+#   跟整點彩蛋 egg1（手電筒巡邏）同一個機制：暗的地方一直都在、人也一直
+#   都在，只是還沒被照到。光掃過去掃到誰，誰就從剪影變回原本的顏色 ——
+#   一下瞄到烏龍麵哥、一下瞄到布丁妹妹。看的人在黑暗裡先認出幾張臉。
 #
-# ★ 賓客是「啪」一下彈出來的，不是走進來的
-#   從畫面外走進來的東西看起來像跑馬燈在推東西過去。
-#   原地彈出來（先扁後彈、帶一圈爆點）才是動畫的語言。
-T_DARK = 0.03                      # 全黑，一下就好
-T_SWEEP = 0.29                     # 探照燈掃到這裡
-T_FLOOD = 0.34                     # 燈全開
-T_POP, POP_STEP, POP_RUN = 0.36, 0.030, 0.022    # 啪啪啪啪，六隻
-T_DROP, T_LAND = 0.575, 0.700      # 主角從上面砸下來
+#   往天上射的首映燈不行 —— 那只是兩根光柱在空中晃，照不到任何人，
+#   跟舞台上有誰完全沒有關係。
+#
+# ★ 掃完要進黑幕
+#   全黑那半秒是整支片的呼吸點。沒有它，燈亮和跳場之間就是硬接，
+#   後面「大家陸續登場」也就不成其為登場了。
+#
+# ★ 賓客是跳下來的，不是走進來的
+#   從畫面外滑進來的東西看起來像跑馬燈在推東西過去。
+T_DARK = 0.02                      # 起手全黑
+T_SWEEP = 0.355                    # 探照燈在舞台上掃
+T_OUT = 0.40                       # 收燈
+T_CURTAIN = 0.455                  # 黑幕：全黑，停一下
+T_FLOOD = 0.485                    # 燈亮
+T_POP, POP_STEP, POP_RUN = 0.495, 0.024, 0.052   # 六隻陸續跳下來
+T_DROP, T_LAND = 0.655, 0.700      # 主角最後砸下來
 T_CHEER = 0.75                     # ★ 配樂第 7 小節的重音
+LAND_SQUASH = 0.018                # 落地擠壓持續多久
 
 
 def _tier(chars, cols, rows, h_frac, floor_frac, spread=(0.02, 0.98)):
@@ -193,59 +204,56 @@ def _blit2(d, spr, ox, oy, sx, sy, pal, flip=False):
             d.rectangle([x0, y0, x1, y1], fill=pal[ch])
 
 
-def _pop(d, pose, cx, floor, s, pal, k, flip=False):
-    """原地彈出來。k 是 0→1 的進度。
 
-    三拍：扁 → 過衝拉高 → 回正。中間那個過衝不能省 ——
-    直接長到定值只是「變大」，有過衝才是「彈」。
-    """
-    if k < 0.34:
-        u = k / 0.34
-        fx, fy = 1.45 - 0.35 * u, 0.45 + 0.35 * u
-    elif k < 0.68:
-        u = (k - 0.34) / 0.34
-        fx, fy = 1.10 - 0.14 * u, 0.80 + 0.32 * u
-    else:
-        u = (k - 0.68) / 0.32
-        fx, fy = 0.96 + 0.04 * u, 1.12 - 0.12 * u
-    sx, sy = max(1.0, s * fx), max(1.0, s * fy)
-    w = max(len(r) for r in pose) * sx
-    h = len(pose) * sy
-    _blit2(d, pose, int(cx - w / 2), int(floor - h), sx, sy, pal, flip)
+def _spot(cols, rows, ph, gain=1.0):
+    """一盞從上方打下來的探照燈，在舞台上左右掃。ph 是 0→1 的掃動進度。
 
+    支點放在畫面上緣外面，光錐往下張開 —— 所以照到的是**舞台和站在
+    上面的人**，不是天空。掃動幅度是回推出來的：支點到地面線大約
+    1.1 個畫面高，要讓光斑掃到左右邊緣，角度只需要十幾度。
+    角度給大了光斑會整個掃出畫面，看起來像燈壞了。
 
-def _beams(cols, rows, ph):
-    """兩道從畫面下緣兩側射上去的探照燈。ph 是 0→1 的掃動進度。
-
-    首映會那種交叉光柱。從下往上射 —— 從上往下射看起來像審訊，
-    不像開幕。兩道的擺動相位差 180 度，所以會在天上交叉。
-
-    ★ 角度要往上：y 是往下長的，所以「上」是負的 sin，
-      也就是角度落在 -180°〜0° 之間。第一版寫成 ±62°，
-      其中一道的 sin 是正的 —— 那一道整個射到畫面下面去了。
-
-    ★ 光柱要細、要短。三角形從一個點張開，張角一大、射程一長，
-      到了畫面上緣就寬到把整個畫面蓋住 —— 那不是探照燈，是開燈。
-
-    遮罩最後糊一下。硬邊的三角形是一塊橘色的色片，糊過的才是光。
+    gain 用來收燈：乘在遮罩上，1→0 就是慢慢暗下去。
     """
     m = Image.new("L", (cols, rows), 0)
     md = ImageDraw.Draw(m)
-    reach = rows * 1.45
-    half = math.radians(4.2 + 1.8 * math.sin(ph * math.tau * 5.0))
-    for side in (-1, 1):
-        ax = cols * (0.5 + side * 0.55)
-        ay = rows * 1.10
-        base = math.radians(-90.0 - side * 26.0)      # 往上、往內
-        swing = math.radians(26.0) * math.sin(
-            ph * math.tau * 2.5 + (0.0 if side < 0 else math.pi))
-        a = base + swing
-        md.polygon([
-            (ax, ay),
-            (ax + math.cos(a - half) * reach, ay + math.sin(a - half) * reach),
-            (ax + math.cos(a + half) * reach, ay + math.sin(a + half) * reach),
-        ], fill=255)
-    return m.filter(ImageFilter.GaussianBlur(3.5))
+    px, py = cols * 0.5, -rows * 0.55
+    reach = rows * 2.0
+    half = math.radians(6.5)
+    # 掃過來掃過去。用 sin 讓兩端慢、中間快 —— 等速掃看起來像雨刷。
+    a = math.radians(17.0) * math.sin(ph * math.tau * 2.5 - math.pi / 2)
+    md.polygon([(px, py),
+                (px + math.sin(a - half) * reach,
+                 py + math.cos(a - half) * reach),
+                (px + math.sin(a + half) * reach,
+                 py + math.cos(a + half) * reach)], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(4.0))
+    if gain < 1.0:
+        m = m.point(lambda v: int(v * max(0.0, gain)))
+    return m
+
+
+def _drop(d, pose, x, floor, s, w, h, pal, k, flip=False):
+    """從畫面上方掉下來。k 是 0→1，到 1 就是站定。
+
+    落下用 k² —— 等速掉下來沒有重量，那是電梯不是跳下來。
+    順便拖兩條速度線，這是像素動畫交代「很快」的標準做法。
+    """
+    y = int(-h + floor * k * k)
+    for dx in (int(w * 0.30), int(w * 0.70)):
+        y0, y1 = max(0, y - int(h * 1.1)), y
+        if y1 > y0:
+            d.rectangle([x + dx, y0, x + dx + max(1, s // 3), y1],
+                        fill=artwork.WHT)
+    sa._blit(d, pose, x, y, s, pal, flip=flip)
+
+
+def _land(d, pose, x, floor, s, w, h, pal, k, flip=False):
+    """落地那一下的擠壓：矮一截、寬一點。k 是 0→1，1 就恢復原狀。"""
+    sq = 1.0 - 0.24 * (1.0 - k)
+    wide = 1.0 + 0.20 * (1.0 - k)
+    _blit2(d, pose, int(x - w * (wide - 1) / 2), int(floor - h * sq),
+           s * wide, s * sq, pal, flip)
 
 
 def frames(cols, rows, n, p=None):
@@ -270,7 +278,7 @@ def frames(cols, rows, n, p=None):
     hero_x = cols // 2 - hw // 2
 
     shadow = (108, 40, 30)                     # 比背景暗一階的暖色，不是純黑
-    txt = max(10, int(rows * 0.10))
+    txt = max(10, int(rows * 0.15))
     night = Image.new("RGB", (cols, rows), (12, 8, 10))
     haze_top, haze_mask = _haze_mask(cols, rows)
     haze = Image.new("RGB", (cols, rows - haze_top), (255, 238, 206))
@@ -280,29 +288,46 @@ def frames(cols, rows, n, p=None):
         t = i / n
         base = sc.gradient(phase=0.09 + 0.05 * t)
 
-        # ------------------------------------------------ 開場：探照燈
+        # ------------------------------------------------ 開場：探照燈掃舞台
         if t < T_DARK:
             out.append(night.copy())
             continue
+
+        if t < T_CURTAIN:
+            # 光錐內外各畫一份：亮的那份是正常配色，暗的那份是剪影，
+            # 再用 composite 逐點取捨。所以照到半邊的角色就真的只亮半邊 ——
+            # 用「這隻在不在光裡」判斷的話一整隻會一起亮，那是開關不是燈。
+            gain = 1.0 if t < T_SWEEP else max(
+                0.0, 1.0 - (t - T_SWEEP) / (T_OUT - T_SWEEP))
+            mask = _spot(cols, rows, (t - T_DARK) / (T_SWEEP - T_DARK), gain)
+
+            lit = ImageChops.add(base, Image.new("RGB", (cols, rows),
+                                                 (40, 28, 16)))
+            dim = Image.blend(night, base, 0.16)
+            dl, dd = ImageDraw.Draw(lit), ImageDraw.Draw(dim)
+            for j, (c, x, s, w, h, floor) in enumerate(guests):
+                flip = j % 2 == 1
+                pose = c.POSES["stand"]
+                sa._blit(dl, pose, x, floor - h, s, c.PAL, flip=flip)
+                sa._blit(dd, pose, x, floor - h, s,
+                         dict.fromkeys(c.PAL, (62, 32, 28)), flip=flip)
+            out.append(Image.composite(lit, dim, mask))
+            continue
+
         if t < T_FLOOD:
-            u = (t - T_DARK) / (T_SWEEP - T_DARK)
-            if u < 1.0:
-                # 被照到的地方比底色再亮一階 —— 光要比背景亮才是光，
-                # 照出原本的顏色只是「露出來」。
-                lit = ImageChops.add(base, Image.new("RGB", (cols, rows),
-                                                     (46, 32, 18)))
-                out.append(Image.composite(lit, night, _beams(cols, rows, u)))
-            else:
-                # 掃完 → 燈全開。中間過曝一下，那是「全亮」的重音。
-                k = (t - T_SWEEP) / (T_FLOOD - T_SWEEP)
-                im = Image.blend(night, base, min(1.0, k * 2.2))
-                if k < 0.5:
-                    # 往純白 blend，不是整片加亮。加亮是把橘色墊高，
-                    # 出來是一片濁掉的米色；blend 才是真的「閃白」。
-                    im = Image.blend(im, Image.new("RGB", (cols, rows),
-                                                   (255, 252, 244)),
-                                     (0.5 - k) * 1.7)
-                out.append(im)
+            # 黑幕。整支片的呼吸點 —— 沒有這半秒，收燈和跳場之間是硬接，
+            # 後面「大家陸續登場」也就不成其為登場了。
+            out.append(night.copy())
+            continue
+
+        # 燈亮：閃白一下再落回底色。往純白 blend，不是整片加亮 ——
+        # 加亮是把橘色墊高，出來是一片濁掉的米色。
+        flood = (t - T_FLOOD) / 0.018
+        if flood < 1.0:
+            im = Image.blend(night, base, min(1.0, flood * 2.0))
+            out.append(Image.blend(im, Image.new("RGB", (cols, rows),
+                                                 (255, 252, 244)),
+                                   (1.0 - flood) * 0.85))
             continue
 
         im = base
@@ -317,23 +342,32 @@ def frames(cols, rows, n, p=None):
         impact = 0.0 <= land < 1.0
         jolt = int((1 - land) * max(1, hs) * 1.6) if impact else 0
 
-        # ------------------------------------------------ 賓客：啪啪啪啪
+        # ------------------------------------------------ 賓客：陸續跳下來
         for j, (c, x, s, w, h, floor) in enumerate(guests):
-            k = (t - (T_POP + j * POP_STEP)) / POP_RUN
+            t0 = T_POP + j * POP_STEP
+            k = (t - t0) / POP_RUN
             if k <= 0:
                 continue
             flip = j % 2 == 1
-            if k < 1:
-                _pop(d, c.POSES["stand"], x + w / 2, floor, s, c.PAL, k, flip)
-                if k < 0.45:                   # 冒出來那一圈爆點
-                    sa._spark(d, int(x + w / 2), int(floor - h * 0.5),
-                              int(h * (0.5 + k)), max(1, s // 2), artwork.WHT)
+            if k < 1.0:
+                _drop(d, c.POSES["stand"], x, floor, s, w, h, c.PAL, k, flip)
                 continue
+
+            lk = (t - (t0 + POP_RUN)) / LAND_SQUASH
+            if lk < 1.0:
+                # 落地：擠一下、腳邊噴一圈。少了這一下就只是「停住」。
+                _shadow(d, x, w, floor, s, shadow)
+                _land(d, c.POSES["stand"], x, floor, s, w, h, c.PAL, lk, flip)
+                sa._spark(d, int(x + w / 2), floor,
+                          int(w * (0.35 + lk * 0.5)), max(1, s // 2),
+                          artwork.WHT)
+                continue
+
             if cheer:
                 pose = c.POSES["cheer"]
                 bob = -s * 2 if ((i + j * 2) // 4) % 2 == 0 else 0
             elif impact:
-                pose, bob = c.POSES["cheer"], -jolt   # 被震得跳起來
+                pose, bob = c.POSES["cheer"], -jolt   # 被主角震得跳起來
             else:
                 # 等主角。相位各差一點，同時起伏會像一起在跳。
                 pose = c.POSES["stand"]
