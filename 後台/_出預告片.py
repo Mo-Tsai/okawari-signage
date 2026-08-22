@@ -20,31 +20,28 @@ OKAWARI 預告片 · 一支動畫（不是門頭屏的模擬圖）
 ★ 整張畫面是同一個像素格
 
   邏輯畫布 270×480，最後用 NEAREST 放大四倍變成 1080×1920。
-  背景、角色、字全部在邏輯畫布上畫完再一起放大 —— 所以字也是像素的，
-  不會出現「平滑的字壓在硬邊的圖上」那種兩套語言打架的感覺。
-  順便：漸變只算 129,600 個點，不是兩百萬個。
+  背景、角色、字全部在邏輯畫布上畫完再一起放大。
 
-★ 三層排成三角形
+★ 日期不是貼上去的字，是布條
 
-  1080 寬放不下八隻並排的大角色。所以分三層：後排四隻橫滿上方、
-  中排兩隻推到左右兩側、主角最大站正中間最下面。
-  正面看過去是一個往下收的三角，而且每一層的頭都在前一層的上面 ——
-  誰都沒有被蓋掉，縱深是這樣做出來的，不是畫背景。
+  一行大字疊在畫面上，不管怎麼排都是「後製加的字」—— 它不屬於那個世界。
+  改成小飯碗從地上拉一條布條起來搖，日期寫在布條上：
+  它有厚度、會跟著擺、被角色拿在手上，是畫面裡的一個東西。
+  布條上的字也是小尺寸的遮罩放大出來的，每一畫都是幾格見方的方塊，
+  跟角色同一種顆粒 —— 不是細邊的印刷字。
 
-★ 分鏡（15.000 秒，跟配樂同一個數字）
+★ 分鏡（20.000 秒，跟配樂同一個數字）
 
-    0.00-0.02   全黑
-    0.02-0.36   探照燈在舞台上左右掃。人一直站在暗處，掃到誰誰才亮 ——
-                一下瞄到烏龍麵哥、一下瞄到布丁妹妹
-    0.36-0.40   收燈
-    0.40-0.49   ★ 黑幕。整支片的呼吸點
-    0.49        燈亮，閃白一下
-    0.50-0.67   六位賓客陸續從天上跳下來，一隻一隻落地
-    0.66-0.70   小飯碗最後砸下來
-    0.70        落地：畫面震、全員被彈起來
-    0.75-1.00   全員歡呼、紙花 ——「8/26」在同一格跳出來
-
-  0.75 就是配樂第 7 小節的重音。兩邊都照 128 BPM 算，不是後製對的。
+    0.0-0.4s    全黑
+    0.4-6.0s    一顆圓形探照燈在全黑的舞台上掃，一拍閃一下。
+                照到誰誰才從黑裡浮出來 —— 其他地方完全看不到底
+    6.0-7.5s    ★ 形體顯現：光散開，所有人的輪廓一起浮出來，再沉回去
+    7.5-8.0s    黑幕
+    8.0s        燈亮（＝配樂第 5 小節，全部樂器進來）
+    8.3-13.9s   六位賓客從四面八方走進來，快慢不一、路線不一
+    15.1-16.0s  小飯碗從天上砸下來（只有主角是掉下來的）
+    16.0s       ★ 落地：畫面震、全員被彈起（＝配樂第 9 小節的重音）
+    16.7-20.0s  小飯碗拉起布條搖，紙花，下緣一行小字
 """
 
 import math
@@ -56,7 +53,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter  # noqa: E402
+from PIL import Image, ImageDraw, ImageFilter  # noqa: E402
 
 import artwork              # noqa: E402
 import food_sprites as fs   # noqa: E402
@@ -66,46 +63,46 @@ import segment_art as sa    # noqa: E402
 OUT = os.path.abspath(os.path.join(HERE, "..", "docs", "teaser"))
 
 FPS = 25
-SECONDS = 15.0                     # ＝ teaser_music.DUR
+SECONDS = 20.0                     # ＝ teaser_music.DUR
 PIXEL = 4                          # 一個邏輯像素放大成幾個實際像素
+BEAT = 0.5                         # ＝ teaser_music 的 120 BPM，燈閃的節拍
 
-# 邏輯畫布。乘以 PIXEL 就是輸出尺寸。
 FORMATS = {
     "reels": (270, 480),           # 1080×1920　IG Reels／限動
     "post": (270, 338),            # 1080×1352　IG 貼文 4:5
 }
 
-REVEAL_TEXT = "8/26"               # 要改字改這裡
+REVEAL_TEXT = "8/26"               # 布條和下緣小字都用這個
 
 BACK = [fs.ONSEN_CH, fs.CURRY_CH, fs.KARAAGE_CH, fs.BASQUE_CH]
 MID = [fs.UDON_CH, fs.PURIN_CH]
 
+BLACK = (0, 0, 0)
+
 # ---------------------------------------------------------------- 節拍
-# 全部是 0→1 的比例。乘上 15 秒就是秒數。
-#
-# ★ 開場是探照燈在舞台上掃，照到人
-#   跟整點彩蛋 egg1（手電筒巡邏）同一個機制：暗的地方一直都在、人也一直
-#   都在，只是還沒被照到。光掃過去掃到誰，誰就從剪影變回原本的顏色 ——
-#   一下瞄到烏龍麵哥、一下瞄到布丁妹妹。看的人在黑暗裡先認出幾張臉。
-#
-#   往天上射的首映燈不行 —— 那只是兩根光柱在空中晃，照不到任何人，
-#   跟舞台上有誰完全沒有關係。
-#
-# ★ 掃完要進黑幕
-#   全黑那半秒是整支片的呼吸點。沒有它，燈亮和跳場之間就是硬接，
-#   後面「大家陸續登場」也就不成其為登場了。
-#
-# ★ 賓客是跳下來的，不是走進來的
-#   從畫面外滑進來的東西看起來像跑馬燈在推東西過去。
+# 全部是 0→1 的比例。乘上 20 秒就是秒數。
 T_DARK = 0.02                      # 起手全黑
-T_SWEEP = 0.355                    # 探照燈在舞台上掃
-T_OUT = 0.40                       # 收燈
-T_CURTAIN = 0.455                  # 黑幕：全黑，停一下
-T_FLOOD = 0.485                    # 燈亮
-T_POP, POP_STEP, POP_RUN = 0.495, 0.024, 0.052   # 六隻陸續跳下來
-T_DROP, T_LAND = 0.655, 0.700      # 主角最後砸下來
-T_CHEER = 0.75                     # ★ 配樂第 7 小節的重音
-LAND_SQUASH = 0.018                # 落地擠壓持續多久
+T_SPOT = 0.30                      # 圓形探照燈掃到這裡
+T_CURTAIN = 0.375                  # 形體顯現（T_SPOT→這裡），然後全黑
+T_FLOOD = 0.40                     # 燈亮 ＝ 配樂第 5 小節
+T_WALK = 0.415                     # 賓客開始走進來
+T_DROP, T_LAND = 0.755, 0.80       # 主角砸下來 ＝ 配樂第 9 小節
+T_BANNER = 0.835                   # 布條拉起來
+LAND_SQUASH = 0.014
+
+# 賓客怎麼進場。(從哪邊, 起點高出定位多少（比例）, 出發時間偏移, 走多久)
+#
+# ★ 六隻不能用同一組數字算出來
+#   一隻一隻等距、等速、從同一邊進來，那是跑馬燈在推東西過去。
+#   左右交錯、快慢不一、有的斜斜地從後面走下來 —— 亂一點才像一群人。
+ENTRIES = [
+    (-1, 0.11, 0.000, 0.128),
+    (+1, 0.00, 0.036, 0.098),
+    (+1, 0.15, 0.074, 0.136),
+    (-1, 0.00, 0.104, 0.092),
+    (-1, 0.07, 0.142, 0.118),
+    (+1, 0.03, 0.178, 0.104),
+]
 
 
 def _tier(chars, cols, rows, h_frac, floor_frac, spread=(0.02, 0.98)):
@@ -125,8 +122,7 @@ def _tier(chars, cols, rows, h_frac, floor_frac, spread=(0.02, 0.98)):
 
     x0, x1 = int(cols * spread[0]), int(cols * spread[1])
     used = sum(b[2] for b in box)
-    lead = max(1, len(box) - 1)
-    gap = (x1 - x0 - used) // lead          # 排不下就變負的，讓它們略為交疊
+    gap = (x1 - x0 - used) // max(1, len(box) - 1)
     out, x = [], x0
     for c, s, w, h in box:
         out.append((c, x, s, w, h, floor))
@@ -139,57 +135,73 @@ def _haze_mask(cols, rows, top_frac=0.58, peak=104):
 
     畫面下半是一大塊飽和的橘，加上白色的碗 —— 那是一個實心的重量塊，
     整個構圖會被壓在下面。壓一層半透明的暖白把底變淺，畫面才浮得起來。
-
-    只算一次，每一格重複用 —— 每格重算要多花 375 倍的時間。
+    只算一次，每一格重複用。
     """
     top = int(rows * top_frac)
     h = rows - top
     col = Image.new("L", (1, h))
     for y in range(h):
-        u = y / max(1, h - 1)
-        col.putpixel((0, y), int(peak * (u ** 1.5)))
+        col.putpixel((0, y), int(peak * ((y / max(1, h - 1)) ** 1.5)))
     return top, col.resize((cols, h), Image.BILINEAR)
 
 
 def _shadow(d, x, w, floor, s, col):
-    """腳下一道暗影。三層角色浮在漸變上會分不出誰站在哪，
-    有影子才有地面 —— 但不畫地平線，畫了就變成三層階梯。
-
-    寬度只取角色的四成，貼著腳。第一版取七成，結果那不是影子，
-    是角色底下一條懸空的黑槓。
-    """
+    """腳下一道暗影。角色浮在漸變上會分不出誰站在哪，有影子才有地面 ——
+    但不畫地平線，畫了就變成三層階梯。寬度只取角色的四成，貼著腳。"""
     pad = int(w * 0.30)
     d.rectangle([x + pad, floor, x + w - pad, floor + max(1, s // 3)],
                 fill=col)
 
 
-def _pixel_text(im, text, cy, size, colour, shadow):
-    """把字畫在邏輯畫布上，置中。
+# 手寫的 3×5 像素數字。日期只會用到數字和斜線，所以不必整套字型。
+#
+# ★ 為什麼不用系統字型縮小再放大
+#   縮到 8 px 的「8」已經不成形了，放大只是把糊掉的地方放大。
+#   3×5 是像素字的最小可讀單位，每一畫都是實心的一格 ——
+#   放大幾倍就是幾格見方的方塊，跟角色是同一種顆粒。
+GLYPHS = {
+    "0": ("111", "101", "101", "101", "111"),
+    "1": ("010", "110", "010", "010", "111"),
+    "2": ("111", "001", "111", "100", "111"),
+    "3": ("111", "001", "111", "001", "111"),
+    "4": ("101", "101", "111", "001", "001"),
+    "5": ("111", "100", "111", "001", "111"),
+    "6": ("111", "100", "111", "101", "111"),
+    "7": ("111", "001", "001", "001", "001"),
+    "8": ("111", "101", "111", "101", "111"),
+    "9": ("111", "101", "111", "001", "111"),
+    "/": ("001", "001", "010", "100", "100"),
+    ".": ("000", "000", "000", "000", "010"),
+    " ": ("000", "000", "000", "000", "000"),
+}
+GLYPH_W, GLYPH_H, GLYPH_GAP = 3, 5, 1
 
-    用 artwork.text_mask —— 它是硬邊的點陣遮罩，跟角色同一個世界。
-    在 1080 那一層畫平滑的字會很漂亮，但那是海報的語言，不是動畫的。
-    """
-    m = artwork.text_mask(text, size)
-    if m is None:
-        return
-    x = (im.width - m.width) // 2
-    y = int(cy - m.height / 2)
-    dark = Image.new("RGB", m.size, shadow)
-    for dx, dy in ((1, 0), (0, 1), (1, 1), (-1, 0), (0, -1), (-1, -1)):
-        im.paste(dark, (x + dx, y + dy), m)
-    im.paste(Image.new("RGB", m.size, colour), (x, y), m)
+
+def _blocky(text, cell):
+    """把字排成一張遮罩。cell 是一格畫幾個邏輯像素。"""
+    chars = [c for c in text if c in GLYPHS]
+    if not chars:
+        return None
+    cols_ = len(chars) * GLYPH_W + (len(chars) - 1) * GLYPH_GAP
+    m = Image.new("L", (cols_ * cell, GLYPH_H * cell), 0)
+    d = ImageDraw.Draw(m)
+    for k, ch in enumerate(chars):
+        ox = k * (GLYPH_W + GLYPH_GAP) * cell
+        for gy, row in enumerate(GLYPHS[ch]):
+            for gx, v in enumerate(row):
+                if v == "1":
+                    x0, y0 = ox + gx * cell, gy * cell
+                    d.rectangle([x0, y0, x0 + cell - 1, y0 + cell - 1],
+                                fill=255)
+    return m
 
 
 def _blit2(d, spr, ox, oy, sx, sy, pal, flip=False):
     """跟 sa._blit 一樣，但橫向和縱向可以不同倍率。
 
-    彈出來那一下要「先扁後彈」—— 扁就是 sx 大、sy 小。
-    只有一個 s 的話做不出擠壓，角色只會憑空變大，那不叫彈出來。
-
     ★ 每一格的右下角要算到「下一格的起點減一」，不能用「起點加寬度」。
-      sx／sy 是小數（6×0.85＝5.1），用寬度算會四捨五入成 5，
-      但下一格的起點是 int(6×5.1)＝30 —— 每一格之間就多出一條縫，
-      角色會被切成一條一條的百葉窗。
+      sx／sy 是小數，用寬度算會四捨五入，格與格之間多出一條縫，
+      角色被切成一條一條的百葉窗。
     """
     w = max(len(r) for r in spr)
     for py, row in enumerate(spr):
@@ -204,33 +216,31 @@ def _blit2(d, spr, ox, oy, sx, sy, pal, flip=False):
             d.rectangle([x0, y0, x1, y1], fill=pal[ch])
 
 
+def _spotlight(cols, rows, u, secs):
+    """一顆圓形光斑在舞台上掃，而且一拍閃一下。
 
-def _spot(cols, rows, ph, gain=1.0):
-    """一盞從上方打下來的探照燈，在舞台上左右掃。ph 是 0→1 的掃動進度。
+    u 是 0→1 的掃動進度，secs 是這一格的絕對秒數（拿來對節拍）。
 
-    支點放在畫面上緣外面，光錐往下張開 —— 所以照到的是**舞台和站在
-    上面的人**，不是天空。掃動幅度是回推出來的：支點到地面線大約
-    1.1 個畫面高，要讓光斑掃到左右邊緣，角度只需要十幾度。
-    角度給大了光斑會整個掃出畫面，看起來像燈壞了。
+    ★ 光斑要走過三層
+      只左右掃的話永遠只照得到同一排。加上上下漂（週期跟左右不同），
+      光斑會繞出一條利薩如曲線，前排後排都會被掃到。
 
-    gain 用來收燈：乘在遮罩上，1→0 就是慢慢暗下去。
+    ★ 閃是「每拍最亮、然後衰減」，不是開關
+      硬切開關看起來像壞掉的日光燈。每一拍打一下再暗下去，
+      才像探照燈在轉。而且這個拍子跟配樂那顆高音「嗶」是同一個
+      120 BPM —— 聲音和畫面同一拍。
     """
+    x = cols * (0.5 + 0.40 * math.sin(u * math.tau * 1.6 - math.pi / 2))
+    y = rows * (0.50 + 0.15 * math.sin(u * math.tau * 2.7))
+    rx, ry = rows * 0.19, rows * 0.145
+
     m = Image.new("L", (cols, rows), 0)
-    md = ImageDraw.Draw(m)
-    px, py = cols * 0.5, -rows * 0.55
-    reach = rows * 2.0
-    half = math.radians(6.5)
-    # 掃過來掃過去。用 sin 讓兩端慢、中間快 —— 等速掃看起來像雨刷。
-    a = math.radians(17.0) * math.sin(ph * math.tau * 2.5 - math.pi / 2)
-    md.polygon([(px, py),
-                (px + math.sin(a - half) * reach,
-                 py + math.cos(a - half) * reach),
-                (px + math.sin(a + half) * reach,
-                 py + math.cos(a + half) * reach)], fill=255)
-    m = m.filter(ImageFilter.GaussianBlur(4.0))
-    if gain < 1.0:
-        m = m.point(lambda v: int(v * max(0.0, gain)))
-    return m
+    ImageDraw.Draw(m).ellipse([x - rx, y - ry, x + rx, y + ry], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(rows * 0.030))
+
+    beat = (secs / BEAT) % 1.0
+    gain = max(0.10, 1.0 - beat * 1.7)
+    return m.point(lambda v: int(v * gain))
 
 
 def _drop(d, pose, x, floor, s, w, h, pal, k, flip=False):
@@ -256,15 +266,48 @@ def _land(d, pose, x, floor, s, w, h, pal, k, flip=False):
            s * wide, s * sq, pal, flip)
 
 
+def _make_banner(cols, rows):
+    """一條布：白底、深色描邊、上下各一條紅壓條，中間是塊狀的日期。"""
+    # 寬度和高度都收過：布條是拿在主角手上的，不是橫幅廣告。
+    # 太寬會把後面兩排整個蓋掉，太高會壓到主角的臉。
+    w, h = int(cols * 0.62), int(rows * 0.092)
+    im = Image.new("RGB", (w, h), (255, 250, 236))
+    d = ImageDraw.Draw(im)
+    edge = max(2, h // 11)
+    d.rectangle([0, 0, w - 1, h - 1], outline=(26, 23, 33), width=edge)
+    bar = max(1, edge // 2)
+    d.rectangle([edge, edge, w - 1 - edge, edge + bar], fill=(226, 58, 46))
+    d.rectangle([edge, h - 1 - edge - bar, w - 1 - edge, h - 1 - edge],
+                fill=(226, 58, 46))
+
+    # 一格 = 內高的五分之一左右（3×5 的字有五列）
+    m = _blocky(REVEAL_TEXT, max(2, int((h - edge * 2) * 0.62 / GLYPH_H)))
+    if m is not None:
+        im.paste(Image.new("RGB", m.size, (26, 23, 33)),
+                 ((w - m.width) // 2, (h - m.height) // 2), m)
+    return im
+
+
+def _wave(canvas, ban, x, y, ph, amp):
+    """把布條一條一條貼上去，每一條上下錯開 —— 布在擺。
+
+    整張直接貼是一塊硬板子。一次貼四欄（不是一欄），
+    48 次貼圖跟 194 次的差別在這支片是兩秒鐘。
+    """
+    step = 4
+    for c0 in range(0, ban.width, step):
+        c1 = min(ban.width, c0 + step)
+        dy = int(math.sin(c0 * 0.085 + ph) * amp)
+        canvas.paste(ban.crop((c0, 0, c1, ban.height)), (x + c0, y + dy))
+
+
 def frames(cols, rows, n, p=None):
     """整支片的每一格，邏輯尺寸。"""
     sc = artwork.Screen(cols, rows, p)
     SP = ricebowl_sprite                       # 主角固定小飯碗
 
-    # 三層排成三角形。主角縮到畫面高度 24%（寬 65%）——
-    # 上一版是 30% 高、80% 寬，站到中間就把中排兩隻整個吃掉，
-    # 布丁妹妹只剩右邊露出一小塊黃色。
-    # 中排的地面線抬到主角頭頂上方，交疊的就只剩它們的腳。
+    # 三層排成三角形：後排四隻橫滿上方、中排兩隻推到左右兩側、
+    # 主角最大站正中間最下面。每一層的頭都在前一層上面，誰都沒被蓋掉。
     back = _tier(BACK, cols, rows, 0.085, 0.44, spread=(0.00, 1.00))
     mid = _tier(MID, cols, rows, 0.145, 0.60, spread=(0.00, 1.00))
     guests = back + mid
@@ -273,153 +316,157 @@ def frames(cols, rows, n, p=None):
     hs = max(1, round(rows * 0.24 / len(hp)))
     hw = max(len(r) for r in hp) * hs
     hh = len(hp) * hs
-    # 腳踩在 0.82，不是踩到底。IG 下面兩成會被留言欄和按鈕蓋掉。
-    hfloor = int(rows * 0.82)
+    hfloor = int(rows * 0.82)                  # 不踩到底，IG 下面兩成有介面
     hero_x = cols // 2 - hw // 2
 
-    shadow = (108, 40, 30)                     # 比背景暗一階的暖色，不是純黑
-    txt = max(10, int(rows * 0.15))
-    night = Image.new("RGB", (cols, rows), (12, 8, 10))
+    shadow = (108, 40, 30)
+    black = Image.new("RGB", (cols, rows), BLACK)
     haze_top, haze_mask = _haze_mask(cols, rows)
     haze = Image.new("RGB", (cols, rows - haze_top), (255, 238, 206))
+
+    ban = _make_banner(cols, rows)
+    ban_x = cols // 2 - ban.width // 2
+    # 布條停在「中排兩隻的頭以下」—— 它是拿在主角手上舉到胸口上方，
+    # 不是掛在天上的橫幅。停太高會把烏龍麵哥和布丁妹妹的臉切掉。
+    # 0.35 是量出來的：再低一點布條會把主角頭上那層肉片整個蓋掉，
+    # 小飯碗就變成一個空白的碗；再高一點會切到布丁妹妹的臉。
+    ban_hi = int(max(f - hgt + hgt * 0.35 for _, _, _, _, hgt, f in mid))
+    ban_lo = hfloor - int(hh * 0.40)
+
+    # 下緣小字：同一套像素字，一格小一點
+    small = _blocky(REVEAL_TEXT, max(2, int(rows * 0.030 / GLYPH_H)))
 
     out = []
     for i in range(n):
         t = i / n
+        secs = t * SECONDS
         base = sc.gradient(phase=0.09 + 0.05 * t)
 
-        # ------------------------------------------------ 開場：探照燈掃舞台
+        # ------------------------------------------------ 全黑
         if t < T_DARK:
-            out.append(night.copy())
+            out.append(black.copy())
             continue
 
-        if t < T_CURTAIN:
-            # 光錐內外各畫一份：亮的那份是正常配色，暗的那份是剪影，
-            # 再用 composite 逐點取捨。所以照到半邊的角色就真的只亮半邊 ——
-            # 用「這隻在不在光裡」判斷的話一整隻會一起亮，那是開關不是燈。
-            gain = 1.0 if t < T_SWEEP else max(
-                0.0, 1.0 - (t - T_SWEEP) / (T_OUT - T_SWEEP))
-            mask = _spot(cols, rows, (t - T_DARK) / (T_SWEEP - T_DARK), gain)
-
-            lit = ImageChops.add(base, Image.new("RGB", (cols, rows),
-                                                 (40, 28, 16)))
-            dim = Image.blend(night, base, 0.16)
-            dl, dd = ImageDraw.Draw(lit), ImageDraw.Draw(dim)
+        # ------------------------------------------------ 圓形探照燈
+        if t < T_SPOT:
+            lit = base.copy()
+            dl = ImageDraw.Draw(lit)
             for j, (c, x, s, w, h, floor) in enumerate(guests):
-                flip = j % 2 == 1
-                pose = c.POSES["stand"]
-                sa._blit(dl, pose, x, floor - h, s, c.PAL, flip=flip)
-                sa._blit(dd, pose, x, floor - h, s,
-                         dict.fromkeys(c.PAL, (62, 32, 28)), flip=flip)
-            out.append(Image.composite(lit, dim, mask))
+                sa._blit(dl, c.POSES["stand"], x, floor - h, s, c.PAL,
+                         flip=j % 2 == 1)
+            u = (t - T_DARK) / (T_SPOT - T_DARK)
+            out.append(Image.composite(lit, black,
+                                       _spotlight(cols, rows, u, secs)))
             continue
 
+        # ------------------------------------------------ 形體顯現 → 沉回去
+        if t < T_CURTAIN:
+            # 光散開成一片很淡的底，所有人的輪廓一起浮出來，再沉回去。
+            # 這一拍不給顏色 —— 認得出有幾個人、認不出是誰，才有下一段。
+            k = math.sin(((t - T_SPOT) / (T_CURTAIN - T_SPOT)) * math.pi)
+            stage = Image.blend(black, base, 0.30)
+            ds = ImageDraw.Draw(stage)
+            for j, (c, x, s, w, h, floor) in enumerate(guests):
+                sa._blit(ds, c.POSES["stand"], x, floor - h, s,
+                         dict.fromkeys(c.PAL, (96, 52, 44)), flip=j % 2 == 1)
+            out.append(Image.blend(black, stage, k))
+            continue
+
+        # ------------------------------------------------ 黑幕
         if t < T_FLOOD:
-            # 黑幕。整支片的呼吸點 —— 沒有這半秒，收燈和跳場之間是硬接，
-            # 後面「大家陸續登場」也就不成其為登場了。
-            out.append(night.copy())
+            out.append(black.copy())
             continue
 
-        # 燈亮：閃白一下再落回底色。往純白 blend，不是整片加亮 ——
-        # 加亮是把橘色墊高，出來是一片濁掉的米色。
-        flood = (t - T_FLOOD) / 0.018
+        # ------------------------------------------------ 燈亮
+        flood = (t - T_FLOOD) / 0.014
         if flood < 1.0:
-            im = Image.blend(night, base, min(1.0, flood * 2.0))
+            im = Image.blend(black, base, min(1.0, flood * 2.0))
             out.append(Image.blend(im, Image.new("RGB", (cols, rows),
                                                  (255, 252, 244)),
                                    (1.0 - flood) * 0.85))
             continue
 
+        # ------------------------------------------------ 正片
         im = base
-        # 下緣壓一層半透明暖白，把底變淺
         im.paste(Image.composite(haze, im.crop((0, haze_top, cols, rows)),
                                  haze_mask), (0, haze_top))
         d = ImageDraw.Draw(im)
-        cheer = t >= T_CHEER
+        cheer = t >= T_LAND
 
-        # 主角砸下來那一下：全員被彈起、畫面震
-        land = (t - T_LAND) / 0.05
+        land = (t - T_LAND) / LAND_SQUASH
         impact = 0.0 <= land < 1.0
         jolt = int((1 - land) * max(1, hs) * 1.6) if impact else 0
 
-        # ------------------------------------------------ 賓客：陸續跳下來
+        # --- 賓客：從四面八方走進來 ---
         for j, (c, x, s, w, h, floor) in enumerate(guests):
-            t0 = T_POP + j * POP_STEP
-            k = (t - t0) / POP_RUN
+            side, rise, delay, run = ENTRIES[j % len(ENTRIES)]
+            k = (t - (T_WALK + delay)) / run
             if k <= 0:
                 continue
-            flip = j % 2 == 1
+            flip = side > 0                    # 面向走的方向
             if k < 1.0:
-                _drop(d, c.POSES["stand"], x, floor, s, w, h, c.PAL, k, flip)
-                continue
-
-            lk = (t - (t0 + POP_RUN)) / LAND_SQUASH
-            if lk < 1.0:
-                # 落地：擠一下、腳邊噴一圈。少了這一下就只是「停住」。
-                _shadow(d, x, w, floor, s, shadow)
-                _land(d, c.POSES["stand"], x, floor, s, w, h, c.PAL, lk, flip)
-                sa._spark(d, int(x + w / 2), floor,
-                          int(w * (0.35 + lk * 0.5)), max(1, s // 2),
-                          artwork.WHT)
+                # 出發點在畫面外，而且比定位高一點 —— 斜斜地走下來，
+                # 讀起來就是「從後面走上前」。全部平走會像貼紙在平移。
+                m = int(cols * 0.06)
+                sx0 = (-w - m) if side < 0 else (cols + m)
+                e = 1.0 - (1.0 - k) ** 2       # 收尾放慢，才有走到定位的感覺
+                rx = int(sx0 + (x - sx0) * e)
+                ry = int(floor - h - rows * rise * (1.0 - e))
+                pose = c.POSES["walk_a" if (i // 5) % 2 == 0 else "walk_b"]
+                sa._blit(d, pose, rx, ry, s, c.PAL, flip=flip)
                 continue
 
             if cheer:
                 pose = c.POSES["cheer"]
                 bob = -s * 2 if ((i + j * 2) // 4) % 2 == 0 else 0
             elif impact:
-                pose, bob = c.POSES["cheer"], -jolt   # 被主角震得跳起來
+                pose, bob = c.POSES["cheer"], -jolt
             else:
-                # 等主角。相位各差一點，同時起伏會像一起在跳。
                 pose = c.POSES["stand"]
                 bob = -s if ((i + j * 7) // 11) % 3 == 0 else 0
             _shadow(d, x, w, floor, s, shadow)
             sa._blit(d, pose, x, floor - h + bob, s, c.PAL, flip=flip)
 
-        # ------------------------------------------------ 主角：從天上砸下來
+        # --- 主角：只有它是從天上掉下來的 ---
         if t >= T_DROP:
             k = min(1.0, (t - T_DROP) / (T_LAND - T_DROP))
             if k < 1.0:
-                # 加速度落下。等速掉下來沒有重量。
-                # y 是身體上緣：從整隻在畫面外（-hh）掉到落地位置。
-                y = int(-hh + hfloor * k * k)
-                for dx in (int(hw * 0.30), int(hw * 0.70)):   # 落下的速度線
-                    y1 = min(rows - 1, y)
-                    y0 = max(0, y - int(rows * 0.20))
-                    if y1 > y0:                  # 還在畫面外就沒有拖尾可畫
-                        d.rectangle([hero_x + dx, y0,
-                                     hero_x + dx + max(1, hs // 3), y1],
-                                    fill=artwork.WHT)
-                sa._blit(d, SP.POSES["stand"], hero_x, y, hs, SP.PAL)
+                _drop(d, SP.POSES["stand"], hero_x, hfloor, hs, hw, hh,
+                      SP.PAL, k)
             elif impact:
-                # 落地擠壓：矮一截、寬一點，腳下噴一圈
                 _shadow(d, hero_x, hw, hfloor, hs, shadow)
-                sq = 1.0 - 0.22 * (1 - land)
-                _blit2(d, SP.POSES["stand"], int(hero_x - hw * 0.09),
-                       int(hfloor - hh * sq), hs * 1.18, hs * sq, SP.PAL)
+                _land(d, SP.POSES["stand"], hero_x, hfloor, hs, hw, hh,
+                      SP.PAL, land)
                 sa._spark(d, hero_x + hw // 2, hfloor,
                           int(hw * (0.5 + land)), max(1, hs // 2), artwork.WHT)
             else:
-                if cheer:
-                    pose = SP.POSES["cheer"]
-                    bob = -hs * 2 if (i // 4) % 2 == 0 else 0
-                else:
-                    pose, bob = SP.POSES["stand"], 0
+                bob = -hs * 2 if (i // 4) % 2 == 0 else 0
                 _shadow(d, hero_x, hw, hfloor, hs, shadow)
-                sa._blit(d, pose, hero_x, hfloor - hh + bob, hs, SP.PAL)
+                sa._blit(d, SP.POSES["cheer"], hero_x, hfloor - hh + bob,
+                         hs, SP.PAL)
 
-        # ------------------------------------------------ 收尾
+        # --- 收尾：紙花、下緣小字、布條 ---
         if cheer:
-            k = (t - T_CHEER) / (1 - T_CHEER)
-            sa._confetti(d, cols, rows, 71, min(1.0, k * 1.5), 0.5, count=150)
-            kk = min(1.0, k / 0.22)
-            # 白過渡到黃。直接給黃的話跳出來那一格不夠亮，
-            # 少了跟重音對上的那一下。
-            col = tuple(int(artwork.WHT[c] + (artwork.YEL[c] - artwork.WHT[c])
-                            * kk) for c in range(3))
-            cy = int(rows * 0.155) + int((1 - kk) * rows * 0.02)
-            _pixel_text(im, REVEAL_TEXT, cy, txt, col, artwork.DARK)
+            k = (t - T_LAND) / (1 - T_LAND)
+            sa._confetti(d, cols, rows, 71, min(1.0, k * 1.3), 0.5, count=170)
 
-        # 落地那一下畫面震。只震那幾格，久了會像訊號不良。
+        if cheer and small is not None:
+            # 下緣一行小字。布條是笑點，這一行是資訊 ——
+            # 布條在擺的時候未必每一格都讀得清楚，這一行永遠讀得到。
+            sx = (cols - small.width) // 2
+            sy = int(rows * 0.94)
+            im.paste(Image.new("RGB", small.size, artwork.DARK),
+                     (sx + 1, sy + 1), small)
+            im.paste(Image.new("RGB", small.size, artwork.WHT), (sx, sy),
+                     small)
+
+        if t >= T_BANNER:
+            # 從主角身後拉起來，然後開始擺。
+            u = min(1.0, (t - T_BANNER) / 0.030)
+            y = int(ban_lo + (ban_hi - ban_lo) * (1.0 - (1.0 - u) ** 2))
+            amp = max(1, int(rows * 0.008)) if u >= 1.0 else 0
+            _wave(im, ban, ban_x, y, secs * 7.0, amp)
+
         if impact:
             amp = max(2, int(rows * 0.012))
             im = im.transform(im.size, Image.AFFINE,
@@ -432,8 +479,8 @@ def frames(cols, rows, n, p=None):
 def encode(frames_, wav, path, scale):
     """邏輯畫布 → PNG 序列 → mp4。
 
-    放大一律 NEAREST。用預設的雙線性會把硬邊糊掉，
-    整支片的像素感就沒了。yuv420p 是 IG 唯一保證吃的像素格式。
+    放大一律 NEAREST。用預設的雙線性會把硬邊糊掉，整支片的像素感就沒了。
+    yuv420p 是 IG 唯一保證吃的像素格式。
     """
     tmp = tempfile.mkdtemp()
     try:
@@ -467,8 +514,8 @@ def main():
     import teaser_music
     wav = os.path.join(OUT, "teaser.wav")
     teaser_music.write(wav)
-    print("配樂　%.3f 秒　%d BPM　原創 chiptune"
-          % (teaser_music.DUR, int(teaser_music.BPM)))
+    print("配樂　%.3f 秒　%d BPM　%d 小節　原創 chiptune"
+          % (teaser_music.DUR, int(teaser_music.BPM), teaser_music.BARS))
 
     for key in sorted(want):
         cols, rows = FORMATS[key]
