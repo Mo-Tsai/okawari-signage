@@ -325,8 +325,7 @@ def _passers(SP, rows, q):
     主角本身就是其中一隻的時候（業主拿食物角色當主角試看），
     把撞名的那隻換成沒排到的角色。自己跟自己比對愛心說「not you」很怪。
     """
-    spare = [c for k, c in food_sprites.FOODS.items()
-             if c not in food_sprites.PASSERS]
+    spare = [c for c in food_sprites.CROWD]
     out = []
     for c in food_sprites.PASSERS:
         if c is SP and spare:
@@ -334,6 +333,39 @@ def _passers(SP, rows, q):
         pose = c.POSES["stand"]
         s = sa._scale(len(pose), rows, q)
         out.append((pose, s, len(pose) * s, c.PAL))
+    return out
+
+
+CROWD_SCALE = 0.62      # 相對主角。看熱鬧的縮一階，畫面才有前後景
+
+
+def _crowd(SP, cols, rows, q, keep_out):
+    """右半邊看熱鬧的三隻。回傳 [(角色, x, 每格幾px, 高度)]。
+
+    keep_out 是主角這一段會用到的最右邊 —— 人群要站在它右邊。
+    最後合體那一拍主角會往右挪，用畫布比例寫死的話會被主角壓掉一隻。
+
+    縮到主角的 62%：一來它們是背景，二來全尺寸三隻根本塞不進剩下的空間。
+    位置從右邊往回排，不是寫死的比例 —— 台南 960、中港 1040，
+    寫死比例的話中港那台最右邊那隻會被切掉一半。
+    """
+    chars = [c for c in food_sprites.CROWD if c is not SP] or food_sprites.CROWD
+    box = []
+    for c in chars:
+        pose = c.POSES["stand"]
+        s = max(1, round(rows * q["hero_scale"] * CROWD_SCALE / len(pose)))
+        box.append((c, s, max(len(r) for r in pose) * s, len(pose) * s))
+
+    right = cols - max(4, int(cols * 0.01))
+    used = sum(b[2] for b in box)
+    lead = max(1, len(box) - 1)
+    gap = max(int(cols * 0.012), (right - keep_out - used) // lead)
+
+    x = max(keep_out, right - used - gap * lead)
+    out = []
+    for c, s, w, h in box:
+        out.append((c, x, s, h))
+        x += w + gap
     return out
 
 
@@ -362,11 +394,28 @@ def render_bogo(cols, rows, p=None):
     mid = cols // 2 - sw
 
     STOPS = [0.24, 0.44, 0.64]         # 中途停三次比對愛心，把過程攤在畫面上
+    # 最後合體那一拍，右邊那隻主角站在 mid + sw + s，身體再佔 sw。
+    # 看熱鬧的要站在那之後，不然會被壓掉一隻。
+    CROWD = _crowd(SP, cols, rows, q, mid + 2 * sw + 3 * s)
     out = []
     for i in range(n):
         t = i / n
         im = sc.gradient(phase=0.08 + 0.04 * t)
         d = ImageDraw.Draw(im)
+
+        # 看熱鬧的先畫，所以會被主角和另一半蓋過去 —— 它們是背景。
+        # 另一半是從右邊走進來的，正好從人群裡穿出來。
+        for j, (cc, cx, cs, ch) in enumerate(CROWD):
+            if t < 0.86:
+                # 站著呼吸。相位各差一點，三隻同時上下會像一起在跳。
+                bob = -cs if ((i + j * 9) // 14) % 3 == 0 else 0
+                pose = cc.POSES["stand"]
+            else:
+                # 最後一起歡呼。跟主角同一個節奏，但慢半拍，才像跟著起鬨。
+                bob = -cs * 2 if ((i + j * 3) // 5) % 2 == 0 else 0
+                pose = cc.POSES["cheer"]
+            sa._blit(d, pose, cx, floor - ch + bob, cs, cc.PAL,
+                     flip=j % 2 == 1)
 
         def hero(x, y, pose="walk_a", heart=True):
             sa._blit(d, SP.POSES[pose], x, y, s, SP.PAL)
