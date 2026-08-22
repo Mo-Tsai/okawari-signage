@@ -4,6 +4,10 @@
 後台/stores.json.bak
 後台/stores.json.tmp
 
+# 按鈕機的設定檔同理：裡面有卡的 Wi-Fi 密碼和節目 guid。
+# 它是 按鈕機/做設定檔.py 產出來的，不是原始碼，掉了重跑一次就有。
+按鈕機/button_config.json
+
 # 編出來的影片，每次編都不一樣而且很大
 後台/build/
 

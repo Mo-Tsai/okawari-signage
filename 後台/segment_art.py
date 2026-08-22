@@ -23,15 +23,22 @@ import random
 from PIL import ImageDraw
 
 import artwork
+import food_sprites
 import person_sprite
 import ricebowl_sprite
 
 # 主角是可以換的。stores.json 的 params.character 決定編出來是誰主演，
-# 分鏡完全一樣 —— 業主要比較兩個角色時，比的才是角色本身，不是分鏡。
+# 分鏡完全一樣 —— 業主要比較角色時，比的才是角色本身，不是分鏡。
+#
+# 食物配角（溫泉蛋君、烏龍麵哥、布丁妹妹、咖哩飯、炸雞、巴斯克）也登記在這裡。
+# 它們平常只在買一送一那段當路人，但介面跟主角完全一樣，
+# 所以業主想看「換成布丁當主角長怎樣」的時候，改 params.character 就好。
+# 牛丼不另外登記 —— 它就是 ricebowl。
 CHARACTERS = {
     "person":   person_sprite,      # 人物（IG 那個戴紅帽的小孩）
     "ricebowl": ricebowl_sprite,    # 小飯碗（長出手腳的牛丼）
 }
+CHARACTERS.update(food_sprites.FOODS)
 SP = person_sprite           # 預設，_ch() 會覆寫
 PROPS = person_sprite        # 碗、蒸氣這些道具不屬於任何角色，兩邊共用
 

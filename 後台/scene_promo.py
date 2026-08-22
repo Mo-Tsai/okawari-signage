@@ -15,6 +15,7 @@ import math
 from PIL import ImageDraw
 
 import artwork
+import food_sprites
 import segment_art as sa
 
 PROPS = sa.PROPS
@@ -282,8 +283,9 @@ def render_bonus(cols, rows, p=None):
 # ★ 兩店檔期不同（中港 9/1-2、小北 9/2-3），所以旗幟上的日期是參數，不是圖。
 #   改 stores.json 的 params.bogo_date 就好，不必重畫、不必重編另一套美術。
 #
-# ★ 客戶原文「途中遇到烏龍麵、炸雞、布丁」—— 那三隻還沒畫，
-#   這版先用另一個主角當路人。角色到位之後換掉 _passer 就好，分鏡不用動。
+# ★ 客戶原文「途中遇到烏龍麵、炸雞、布丁」—— 2026-08-21 這三隻畫好了，
+#   放在 food_sprites.PASSERS，順序照原文排。之前是拿另一個主角頂著，
+#   三個路人長一樣；現在三個各是各的，「一路找過去都不是」才讀得出來。
 
 # 描邊。愛心是紅的，背景也是紅橙，不描邊在 LED 上整顆會不見。
 # 寬度取單數，中間那一欄留空 —— 那條縫就是「兩半」看得出來的地方。
@@ -314,9 +316,25 @@ HEART_L = _half_heart(False)
 HEART_R = _half_heart(True)
 
 
-def _passer(SP):
-    """路人。用另一個主角頂著 —— 烏龍麵、炸雞、布丁還沒畫。"""
-    return sa.ricebowl_sprite if SP is sa.person_sprite else sa.person_sprite
+def _passers(SP, rows, q):
+    """三個路人，各自算好姿勢和比例。回傳 [(sprite, 每格幾px, 高度, 配色)]。
+
+    比例要各算各的 —— 咖哩飯 11 列、布丁 17 列，共用一個 s 的話
+    矮的會縮成一團、高的會爆出畫布上緣。
+
+    主角本身就是其中一隻的時候（業主拿食物角色當主角試看），
+    把撞名的那隻換成沒排到的角色。自己跟自己比對愛心說「not you」很怪。
+    """
+    spare = [c for k, c in food_sprites.FOODS.items()
+             if c not in food_sprites.PASSERS]
+    out = []
+    for c in food_sprites.PASSERS:
+        if c is SP and spare:
+            c = spare.pop(0)
+        pose = c.POSES["stand"]
+        s = sa._scale(len(pose), rows, q)
+        out.append((pose, s, len(pose) * s, c.PAL))
+    return out
 
 
 def render_bogo(cols, rows, p=None):
@@ -328,7 +346,7 @@ def render_bogo(cols, rows, p=None):
     sc = artwork.Screen(cols, rows, p)
     q = sc.p
     SP = sa._ch(q)
-    OTHER = _passer(SP)
+    PASS = _passers(SP, rows, q)
     n = artwork.frame_count(q, "bogo")
 
     spr = SP.POSES["stand"]
@@ -337,11 +355,6 @@ def render_bogo(cols, rows, p=None):
     sh = len(spr) * s
     floor = rows - max(1, s)
     gy = floor - sh
-
-    op = OTHER.POSES["stand"]
-    os_ = sa._scale(len(op), rows, q)   # ★ 路人有自己的比例。
-    oh = len(op) * os_                 #   人物 28 列、小飯碗 17 列，
-                                       #   共用主角的 s 會高到爆出畫布。
 
     hs_ = max(1, s)
     hw = len(HEART[0]) * hs_
@@ -367,10 +380,10 @@ def render_bogo(cols, rows, p=None):
             k = t / 0.62
             x = int(-sw + (mid + sw) * k)
 
-            # 路人站定不動，主角從他們身邊經過
-            for sp in STOPS:
+            # 路人站定不動，主角從他們身邊經過。三個各站一站，各是各的角色。
+            for sp, (op, os_, oh, opal) in zip(STOPS, PASS):
                 px = int(-sw + (mid + sw) * sp) + sw + int(cols * 0.06)
-                sa._blit(d, op, px, floor - oh, os_, OTHER.PAL, flip=True)
+                sa._blit(d, op, px, floor - oh, os_, opal, flip=True)
 
             paused = any(abs(k - sp) < 0.055 for sp in STOPS)
             if paused:
