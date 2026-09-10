@@ -209,6 +209,37 @@ def carve(store, minute):
     return len(cuts), made
 
 
+# ---------------------------------------------------------------- 自我檢查
+def check(store):
+    """開屏時間內，每一秒都必須剛好有一支時段畫面有資格播。
+
+    這是這支腳本唯一真正要保證的事，所以每次跑完都自己驗一遍。
+
+      0 支 → 那一秒卡沒有時段畫面可播，會去輪到 COMBO
+             （2026-08-17「客人沒續碗卻自己跳出來」就是這樣）
+      2 支 → 兩支都 count=999，誰先搶到誰霸著，行為不可預測
+
+    用秒去掃不是分鐘 —— 挖出來的窗邊界本來就落在秒上，用分鐘掃會剛好跳過去。
+    """
+    import datetime
+    import schedule as sched
+
+    sc = store.get("schedule") or {}
+    a, b = sec(sc.get("open") or "11:00"), sec(sc.get("close") or "22:30")
+    base = [c for c in store.get("contents", [])
+            if sched.is_base(c) and not (c.get("when") or {}).get("date")]
+
+    bad, logo = [], 0
+    for t in range(a, b):
+        now = datetime.datetime(2026, 10, 1, t // 3600, (t % 3600) // 60, t % 60)
+        hit = [c["key"] for c in base if sched.is_active(c.get("when"), now)]
+        if len(hit) != 1:
+            bad.append((hms(t), hit))
+        elif hit[0].startswith("logo_"):
+            logo += 1
+    return bad, logo, b - a
+
+
 # ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -249,6 +280,15 @@ def main():
         print("  時段畫面被切成 %d 段（多出來的 %d 段共用原本的影片）"
               % (n + made, made))
         print("  卡上的節目：%d → %d 支，影片只多一支（logo）" % (before, after))
+
+        bad, logo, span = check(store)
+        if bad:
+            print("  ✗ 有 %d 秒不是剛好一支時段畫面有資格，前三筆：" % len(bad))
+            for t, hit in bad[:3]:
+                print("      %s → %s" % (t, hit or "（沒有任何一支）"))
+            raise SystemExit("時段表不對，沒有寫回 stores.json。")
+        print("  ✓ 開屏的 %d 秒裡每一秒都剛好一支有資格；LOGO 佔 %.1f%%"
+              % (span, 100.0 * logo / span))
         print()
 
     json.dump(data, io.open(STORES, "w", encoding="utf-8"),

@@ -80,6 +80,9 @@ def main():
     html = PAGE % {
         "tabs": tabs, "vids": vids, "ticks": ticks,
         "open": a["open"], "close": a["close"], "n": len(a["slots"]),
+        # 分鐘從 stores.json 讀回來，不寫死 —— 改了排程卻沒改文案，
+        # 業主看到的時間就會跟屏上不一樣，而那種錯沒有人會去對。
+        "minute": a["slots"][0][3:5],
     }
     io.open(OUT, "w", encoding="utf-8", newline="\n").write(html)
     print()
@@ -193,7 +196,7 @@ PAGE = u"""<!doctype html>
     <div class="kicker">OKAWARI 門頭屏</div>
     <h1>整點 LOGO 跑燈</h1>
     <p class="lead">
-      每個整點過 45 分，門頭屏會換成品牌綠底，LOGO 從右邊滑進來、停在正中間，
+      每個整點過 %(minute)s 分，門頭屏會換成品牌綠底，LOGO 從右邊滑進來、停在正中間，
       再往左邊滑出去。一分鐘之後回到原本的時段畫面。
     </p>
   </header>
@@ -210,7 +213,7 @@ PAGE = u"""<!doctype html>
   <div class="ends"><span>%(open)s 開屏</span><span>%(close)s 關屏</span></div>
 
   <ul class="notes">
-    <li><b>時間</b><span>開屏時間內每個整點過 45 分，一天 <strong>%(n)s 次</strong>。
+    <li><b>時間</b><span>開屏時間內每個整點過 %(minute)s 分，一天 <strong>%(n)s 次</strong>。
       避開整點 —— 整點那一分鐘留給隱藏彩蛋。</span></li>
     <li><b>長度</b><span>一次一分鐘，LOGO 會完整跑過兩到三遍。
       前後都是乾淨的綠底，所以進場和退場都不會看到 LOGO 卡在半路。</span></li>
