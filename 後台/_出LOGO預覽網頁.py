@@ -74,12 +74,24 @@ def main():
         'autoplay loop muted playsinline preload="auto"></video>'
         % ("" if i == 0 else " off", i, c["w"], c["h"], c["src"])
         for i, c in enumerate(cards))
-    ticks = "".join('<i style="left:%.4f%%"><b>%s</b></i>'
-                    % (pos(t, a["open"], a["close"]), t) for t in a["slots"])
+    # ★ 2026-09-11：時間軸改成每家店一條。
+    #   台南百貨規定 22:10 就要關屏，台中還是 23:00 ——
+    #   兩家店的格數和收尾時間已經不一樣。
+    #   共用一條的話，業主切到另一家時看到的會是別家的時間。
+    days = "".join(
+        '<div class="day%s" data-i="%d">'
+        '<div class="bar"><hr>%s</div>'
+        '<div class="ends"><span>%s 開屏</span>'
+        '<span>一天 <b>%d</b> 次</span>'
+        '<span>%s 關屏</span></div></div>'
+        % ("" if i == 0 else " off", i,
+           "".join('<i style="left:%.4f%%"><b>%s</b></i>'
+                   % (pos(t, c["open"], c["close"]), t) for t in c["slots"]),
+           c["open"], len(c["slots"]), c["close"])
+        for i, c in enumerate(cards))
 
     html = PAGE % {
-        "tabs": tabs, "vids": vids, "ticks": ticks,
-        "open": a["open"], "close": a["close"], "n": len(a["slots"]),
+        "tabs": tabs, "vids": vids, "days": days,
         # 分鐘從 stores.json 讀回來，不寫死 —— 改了排程卻沒改文案，
         # 業主看到的時間就會跟屏上不一樣，而那種錯沒有人會去對。
         "minute": a["slots"][0][3:5],
@@ -163,6 +175,8 @@ PAGE = u"""<!doctype html>
     color:var(--dim); letter-spacing:.02em;
   }
   .ends{display:flex; justify-content:space-between; color:var(--dim); font-size:12px}
+  .ends b{color:var(--gold); font-weight:700}
+  .day.off{display:none}
 
   .notes{
     margin:26px 0 0; padding:0; list-style:none;
@@ -209,12 +223,12 @@ PAGE = u"""<!doctype html>
   </p>
 
   <h2>一天跑幾次</h2>
-  <div class="bar"><hr>%(ticks)s</div>
-  <div class="ends"><span>%(open)s 開屏</span><span>%(close)s 關屏</span></div>
+  %(days)s
 
   <ul class="notes">
-    <li><b>時間</b><span>開屏時間內每個整點過 %(minute)s 分，一天 <strong>%(n)s 次</strong>。
-      避開整點 —— 整點那一分鐘留給隱藏彩蛋。</span></li>
+    <li><b>時間</b><span>開屏時間內每個整點過 %(minute)s 分跑一次。
+      避開整點 —— 整點那一分鐘留給隱藏彩蛋。
+      兩家店的關屏時間不一樣，所以次數也不一樣（上面切換分頁看）。</span></li>
     <li><b>長度</b><span>一次一分鐘，LOGO 會完整跑過兩到三遍。
       前後都是乾淨的綠底，所以進場和退場都不會看到 LOGO 卡在半路。</span></li>
     <li><b>素材</b><span>直接用貴公司提供的 LOGO 原始檔。
@@ -229,12 +243,14 @@ PAGE = u"""<!doctype html>
 <script>
   var tabs = document.querySelectorAll('.tab');
   var vids = document.querySelectorAll('.panel');
+  var days = document.querySelectorAll('.day');
   for (var i = 0; i < tabs.length; i++) {
     tabs[i].addEventListener('click', function () {
       var n = this.dataset.i;
       for (var j = 0; j < tabs.length; j++) {
         tabs[j].classList.toggle('on', tabs[j].dataset.i === n);
         vids[j].classList.toggle('off', vids[j].dataset.i !== n);
+        days[j].classList.toggle('off', days[j].dataset.i !== n);
         // 切回來要從頭放，不然使用者看到的是一段停在中間的綠底
         if (vids[j].dataset.i === n) { vids[j].currentTime = 0; vids[j].play(); }
       }
