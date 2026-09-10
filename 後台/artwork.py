@@ -134,10 +134,10 @@ DEFAULT_PARAMS = {
 
     # 小飯碗的四段常駐（業主 2026-08-09 需求）。時段本身寫在 stores.json 的 when，
     # 這裡只管每一段多長、多流暢。
-    "noon_seconds": 16, "noon_fps": 25,
+    "noon_seconds": 20, "noon_fps": 25,         # 2026-08-24 四段統一 20 秒
     "siesta_seconds": 20, "siesta_fps": 12,     # 睡覺不用高幀率
-    "opening_seconds": 14, "opening_fps": 25,
-    "evening_seconds": 16, "evening_fps": 25,
+    "opening_seconds": 20, "opening_fps": 25,   # 2026-08-24 拉長：多了合簾那一拍
+    "evening_seconds": 20, "evening_fps": 25,   # 2026-08-24 拉長：多了起身、退場兩拍
     # 晚間那句台詞。預設空的 —— 長中文在 P4 屏上遠看會糊，
     # 而且它是唯一一句「看不懂就沒意義」的文案。要放再填。
     "evening_text": "",
@@ -172,6 +172,15 @@ DEFAULT_PARAMS = {
     "promo_open_text": "WELCOME TO OKAWARI!",
     "promo_egg_seconds": 10, "promo_egg_fps": 25,
     "promo_egg_text": "+10   EGG UPGRADE!",
+
+    # 整點 LOGO 跑燈（業主 2026-09-10：「每一個小時跑一次 logo」）。
+    # 20 秒是配合卡上那個一分鐘的窗算的 —— 窗一定要比時段影片長，
+    # 卡才不會整個錯過（理由寫在 _排整點LOGO.py 的長註解）。
+    "logo_seconds": 20, "logo_fps": 25,
+    "logo_height": 0.82,     # logo 佔畫面高度的比例
+    "logo_hold": 0.28,       # 停在正中間多久（佔整支的比例）。0 = 純跑燈不停
+    "logo_pad": 0.06,        # 頭尾各留多少「乾淨綠底」。重播時接得回去靠這個
+    "logo_shine": 0.16,      # 停住時掃過的亮帶寬度（佔 logo 寬）。0 = 不掃
 }
 
 
@@ -478,3 +487,11 @@ try:
     RENDERERS.update(scene_egg.RENDERERS)
 except Exception as _e:
     print("彩蛋美術載入失敗，先跳過：%r" % (_e,))
+
+# 整點 LOGO 跑燈。又分一支，因為它是唯一一支「素材是業主給的原始檔」的內容 ——
+# 其他全部是我們自己畫的。它壞掉的原因會是「圖不見了」，跟美術參數無關。
+try:
+    import scene_logo
+    RENDERERS.update(scene_logo.RENDERERS)
+except Exception as _e:
+    print("LOGO 跑燈載入失敗，先跳過：%r" % (_e,))
