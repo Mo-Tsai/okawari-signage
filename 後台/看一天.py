@@ -123,6 +123,58 @@ def with_retry(card, fn, what, tries=5):
     raise last
 
 
+def _mid(w):
+    """一個時間窗的中點，回 "HH:MM:SS"。挑中點是因為邊界最危險 ——
+    卡的時鐘跟筆電差個一兩秒，落在邊界上就會忽成忽敗。"""
+    def sec(t):
+        q = [int(x) for x in str(t).split(":")]
+        while len(q) < 3:
+            q.append(0)
+        return q[0] * 3600 + q[1] * 60 + q[2]
+    m = (sec(w[0]) + sec(w[1])) // 2
+    return "%02d:%02d:%02d" % (m // 3600, (m % 3600) // 60, m % 60)
+
+
+def plan(key, fake, store, pub):
+    """回傳 (要切哪一支, 要把卡的時間假裝成什麼)。兩個都從 stores.json 推。
+
+    ★ 2026-09-11 加。原本只有 key 會自己挑，假時間還是寫死的 ——
+      於是今天台南把 postclose 從 22:30 移到 21:40 之後，清單還在假裝 22:45，
+      那支就切不動；買一送一的日期寫的是台中的 9/1，台南是 9/2–9/3，也切不動。
+      **兩次都不是內容壞掉，是清單過期。** 而它報出來的樣子跟真的壞掉一模一樣。
+
+      所以假時間也改成算的：日期落在檔期窗裡，時間落在它自己的窗中點。
+    """
+    c0 = next((c for c in store.get("contents", []) if c["key"] == key), None)
+    if not c0:
+        return key, fake
+    day, _, clock = fake.partition(" ")
+
+    w = (c0.get("when") or {})
+    d = w.get("date") or []
+    if len(d) == 2 and not (d[0] <= day <= d[1]):
+        day = d[0]                      # 檔期：假日期一定要落在檔期裡
+
+    t = w.get("time") or []
+    if len(t) == 2:
+        a, b = hhmmss_or(t[0]), hhmmss_or(t[1])
+        if a and b and not (a <= clock < b):
+            clock = _mid([a, b])        # 時間窗：落在窗中點，不要卡邊界
+
+    fake2 = "%s %s" % (day, clock)
+    return resolve(key, fake2, store, pub), fake2
+
+
+def hhmmss_or(t):
+    try:
+        q = [int(x) for x in str(t).split(":")]
+    except Exception:
+        return None
+    while len(q) < 3:
+        q.append(0)
+    return "%02d:%02d:%02d" % (q[0], q[1], q[2])
+
+
 def resolve(key, fake, store, pub):
     """假時間到了之後，真正該切的是哪一支。
 
@@ -184,7 +236,7 @@ def main():
     try:
         with_retry(card, lambda: card.call('  <in method="OpenScreen"/>'), "開屏")
         for key, name, fake in DAY:
-            key = resolve(key, fake, store, pub)
+            key, fake = plan(key, fake, store, pub)
             if key not in pub:
                 print("  跳過 %s（沒發佈）" % key)
                 continue
